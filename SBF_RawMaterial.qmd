@@ -1,0 +1,732 @@
+---
+title: "SBF_RawMaterial"
+format: html
+editor: visual
+---
+
+```{r library}
+#| warning: false
+#| message: false
+
+
+# To plot figures
+library(ggplot2)
+library(forcats)
+library(ggpubr)
+library(ggridges)
+library(cowplot)
+library(ggforce)
+
+library(infer)
+#library(rcompanion)
+library(purrr)
+#library(rcompanion)
+library(viridis)
+
+library(scales)
+library(stringr)
+
+# To generate tables
+library(gtsummary)
+library(gt)
+library(broom)
+library(broom.mixed)
+
+library(stargazer)
+library(kableExtra)
+
+# To tidy the data
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(forcats)
+library(tidybayes)
+
+# Bayesian models
+library(brms)
+library(emmeans)
+library(loo)
+library(BayesFactor)
+library(posterior)
+```
+
+```{r diversity}
+# Load the context associations
+ctx <- read_csv("../data/SBF_Context.csv")
+```
+
+```{r ReadData}
+#| message: false
+#| warning: false
+
+# Read and clean data
+df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
+  select(-c('X')) |>
+  filter(RAWMATERIAL != "BWA UPPER 1" &
+           RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
+  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
+          #              ifelse(STRAT == "3b", "3", STRAT)),
+         STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
+                     ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
+  mutate(STRAT = factor(STRAT),
+         STRAT_mod = factor(STRAT_mod))
+
+df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
+  filter(RAWMATERIAL != "BWA UPPER 1" &
+           RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
+  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
+          #              ifelse(STRAT == "3b", "3", STRAT)),
+         STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+                     ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
+  mutate(STRAT = factor(STRAT),
+         STRAT_mod = factor(STRAT_mod)) |>
+  
+  select(-c(X))
+
+# student's dataframe
+df_One <- read_csv("../data/DataSheet_1.csv")|>
+  mutate(STRAT = tolower(Layer),
+         
+         PLATFORMWIDTH = parse_number("Platform Width"),
+         PLATFORMTHICKNESS = parse_number("Platform Thickness"),
+         MAXLENGTH = parse_number("Maximum Length"),
+         TECHLENGTH = parse_number("Technological Length"),
+         MAXWIDTH = parse_number("Maximum Width"),
+         TECHWIDTH = parse_number("Technological Width"),
+         MAXTHICKNESS = parse_number("Thickness"),
+         MASS = parse_number("Mass"))
+
+df_One <- df_One[1:289,]
+
+df_One_flakes <- df_One |>
+  
+  add_column(OTHERUNIT = NA, .before = "Raw Material") |>
+
+  rename(SITE = Site, UNIT = Unit, NAMED_ID = `Other Name`,
+         RAWMATERIAL = `Raw Material`, CORTEX = `Cortex Percent`,
+         CORTEXTYPE = `Cortex Origin`, ARTIFACTCLASS = `Artifact class`,
+         COMPLETENESS = Complete, PLATFORM = `Platform?`,
+         FLAKEINITIATION = Initiated, FLAKETERMINATION = Termination,
+         FLAKEGEOMETRY = `Flake Geometry`, PLATFORMPREP = `Platform Preparation`,
+         PLATABRASION = PlatformAbrasion, 
+         STAGE = `Flaking Stage`) |>
+  
+  select(-c(Layer, Notes, Photo,
+            `Platform Width`:`Platform Thickness`, `Maximum Length`:Mass)) |>
+  
+  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
+          #            ifelse(STRAT == "3b", "3", 
+           #                  ifelse(STRAT == "5a", "5", STRAT))),
+         STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+                     ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
+  mutate(STRAT = factor(STRAT),
+         STRAT_mod = factor(STRAT_mod)) |>
+  
+  relocate(STRAT, .before = "UNIT") |>
+  relocate(CORTEXTYPE, .before = "ARTIFACTCLASS")
+  
+  
+
+# student's Dataframe
+df_Two <- read_csv("../data/DataSheet_2.csv") |>
+  
+  rename(SITE = Site, STRAT = Layer, UNIT = Unit, NAMED_ID = `Other Name`,
+         RAWMATERIAL = `Raw Material`, CORTEX = `Cortex Percent`,
+         ARTIFACTCLASS = `Artifact class`, CORTEXTYPE = `Cortex Origin`,
+         COMPLETENESS = Complete, PLATFORM = `Platform?`,
+         FLAKEINITIATION = Initiated, FLAKETERMINATION = Termination,
+         FLAKEGEOMETRY = `Flake Geometry`, PLATFORMPREP = `Platform Preparation`,
+         PLATABRASION = `PlatformAbrasion`, PLATFORMWIDTH = `Platform Width`,
+         PLATFORMTHICKNESS = `Platform Thickness`, STAGE = `Flaking Stage`,
+         MAXLENGTH = `Maximum Length`, TECHLENGTH = `Technological Length`,
+         MAXWIDTH = `Maximum Width`, TECHWIDTH = `Technological Width`,
+         MAXTHICKNESS = Thickness, MASS = Mass) |>
+  
+  select(-c(`...2`,Notes:Photo))
+
+df_Two_flakes <- df_Two |>
+  
+  add_column(OTHERUNIT = NA, .before = "RAWMATERIAL") |>
+  
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+                     ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
+  mutate(STRAT = factor(STRAT),
+         STRAT_mod = factor(STRAT_mod))
+
+
+
+
+df_Two_flakes <- df_Two_flakes[1:421,] |>
+  relocate(CORTEXTYPE, .before = "ARTIFACTCLASS")
+  
+
+df_students <- rbind(df_Two_flakes, df_One_flakes)
+
+
+df <- rbind(df_sum24, df_sum25) |>
+  merge(df_students, all = T) |>
+  mutate(TECHLENGTH = as.numeric(TECHLENGTH),
+         MAXWIDTH = as.numeric(MAXWIDTH),
+         MAXTHICKNESS = as.numeric(MAXTHICKNESS)) |>
+  filter(STRAT %in% c("1", "2", "3a", "3b", "3", "4a", "4b", "5")) |>
+  
+  mutate(ARTIFACTCLASS = ifelse(ARTIFACTCLASS == "flake", "Flake",
+                         ifelse(ARTIFACTCLASS == "blade", "Flake",
+                         ifelse(ARTIFACTCLASS == "Flake/Blade", "Flake",
+                         ifelse(ARTIFACTCLASS == "Fragment", "Flake",
+                                                     ARTIFACTCLASS)))),
+         
+         RAWMATERIAL = as.factor(
+           ifelse(RAWMATERIAL == "Silcrete flake", "Silcrete",
+                              ifelse(RAWMATERIAL == "OTHER", "Other",
+                                     RAWMATERIAL))),
+         
+         CORTEX = ifelse(CORTEX == "10-40%", "11-40%",
+                  ifelse(CORTEX == "90-99%", "91-99%",
+                  ifelse(CORTEX == "60-90%", "61-90%",
+                  ifelse(CORTEX == "40-60%", "41-60%",
+                         CORTEX)))),
+         
+         STRAT_mod = ifelse(STRAT == "1", 27.2,
+                     ifelse(STRAT == "2", 37.1,
+                     ifelse(STRAT == "3a", 49.8,
+                     ifelse(STRAT == "3b", 29.6,
+                     ifelse(STRAT == "4a", 26.6,
+                     ifelse(STRAT == "4b", 25.5,
+                     ifelse(STRAT == "5", 8.4, 0))))))),
+         
+         STRAT_modn = ifelse(STRAT %in% c("5"),"Pre-Megamidden",
+                     ifelse(STRAT %in% c("4a", "4b"), "Transitional", 
+                            "Megamidden")),
+         STRAT_modn = fct_relevel(STRAT_modn, 
+                                  c("Pre-Megamidden", "Transitional",
+                                    "Megamidden"))) |>
+  
+  filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete"),
+         CORTEX != "\\",
+         MAXWIDTH < 1250,
+         MASS < 300)
+
+
+
+# take average core flake scar length
+df |>
+  dplyr::filter(ARTIFACTCLASS=="Core") |>
+  group_by(RAWMATERIAL, STRAT) |>
+  summarize(Ave_FlakeLength = mean(LENGHTLONGESTFLAKESCAR)) -> core_size
+
+
+# set values for small, medium, and large slug effect sizes
+
+small <- 5.18
+
+
+# Subset data by flakes and flake variables
+core_bind <- full_join(core_size, df) |>
+  filter(ARTIFACTCLASS == "Flake" & COMPLETENESS == "Complete") |>
+  group_by(RAWMATERIAL, STRAT) |>
+  mutate(Utility_small = TECHLENGTH*(TECHLENGTH - small),
+         
+         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3),
+         
+         Reduction = TECHLENGTH/Ave_FlakeLength) |>
+  select(any_of(names(df_students))) -> df.flakes
+
+# Subset data by cores and core variables
+df.cores <- df |>
+  filter(ARTIFACTCLASS == "Core" & CORECOMPLETENESS == "Complete") |>
+  mutate(SA_Ellipse = (4*pi)*
+           ((((((MAXLENGTH/2)*(MAXWIDTH/2))^1.6075)+
+           (((MAXLENGTH/2)*(MAXTHICKNESS/2))^1.6075)+
+           (((MAXWIDTH/2)+(MAXTHICKNESS/2))^1.6075))/3)^(1/1.6075)))
+
+# Subset data by retouch and retouch variables
+df.retouch <- df |>
+  filter(ARTIFACTCLASS == "RetouchedTool" & RAWMATERIAL != "BWA UPPER 1" &
+           COMPLETENESS == "Complete") |>
+  mutate(Utility_small = TECHLENGTH*(TECHLENGTH - small),
+         
+         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3))
+
+# Read tabulated data from previous publications (i.e. Jerardino & Yates)
+sbf_df <- read.csv("../data/SBF_ToolType.csv")
+sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv")
+```
+
+## Raw material distribution
+
+```{r tab1}
+#| label: tab-one
+
+
+# Create summary table
+
+df |>
+  mutate(across(where(is.factor), droplevels)) |>
+  select(STRAT, RAWMATERIAL, ARTIFACTCLASS) |>
+  mutate(ARTIFACTCLASS = ifelse(ARTIFACTCLASS ==
+                                  "RetouchedTool", "Retouched tools", 
+                                ARTIFACTCLASS),
+         RAWMATERIAL = 
+           fct_relevel(RAWMATERIAL,
+                       "Quartz", "Quartzite", "Silcrete")) |>
+  rename(Layer = STRAT,
+         `Artifact class` = ARTIFACTCLASS) |>
+  filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
+  tbl_strata(
+    strata = RAWMATERIAL,
+    .tbl_fun =
+      ~ .x |>
+        tbl_summary(by = "Artifact class", missing = "no") |> add_n()
+  ) |>
+  modify_header(label = "") -> tab1
+tab1
+
+#gtsave(tab1, "Table1.png")
+```
+
+```{r}
+#| message: false
+#| warning: false
+
+# coastal diets
+df |>
+  filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
+  group_by(STRAT_mod, RAWMATERIAL) |>
+  summarize(Freq = n()) |>
+  mutate(cs = sum(Freq),
+         prop = Freq/cs) |>
+  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = prop, fill = RAWMATERIAL))+
+  geom_col()+
+  labs(fill = "",
+       x = "Coastal-to-Terrestrial\nFoods",
+       y = "Proportion") +
+  theme_minimal()+
+  theme_classic(base_size = 18)+
+  scale_fill_manual(values = cols)+
+  theme(axis.text.x = 
+          element_text(angle = 45, hjust = 1)) -> RM_plot00
+```
+
+```{r}
+png("../results/figures/fig5.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+ggarrange(
+  RM_plot00,
+  align = "h",
+  common.legend = TRUE
+)
+
+dev.off()
+
+```
+
+```{r Dirchlet_Prop_Ind0}
+# Bayesian test
+dir00 <- df |>
+  group_by(RAWMATERIAL, STRAT_mod) |>
+  mutate(STRAT_mod = factor(STRAT_mod)) |>
+  count() |>
+  pivot_wider(names_from = RAWMATERIAL, values_from = n, values_fill = 0) |>
+  mutate(total = Quartz + Quartzite + Silcrete,
+         
+         Quartz_prop = Quartz/total,
+         Quartzite_prop = Quartzite/total,
+         Silcrete_prop = Silcrete/total,
+         
+         y = cbind(Quartz_prop, Quartzite_prop, Silcrete_prop),
+         )
+
+
+my_prior <- 
+  prior(normal(0, 1.5), class = "Intercept", dpar = "mu2") +
+  prior(normal(0, 1.5), class = "Intercept", dpar = "mu3") +
+  
+  prior(normal(0, 1), class = "b", dpar = "mu2") +     
+  prior(normal(0, 1), class = "b", dpar = "mu3") +
+  prior(exponential(1), class = "phi")  
+
+bayes_dm00 <- brm(
+  y ~ STRAT_mod,
+  family = dirichlet(),
+  data = dir00,
+  prior = my_prior,
+  iter = 4000,
+  seed = 77644123,
+  chains = 4,
+  save_pars = save_pars(all = TRUE),
+  cores = getOption("mc.cores", 14)
+)
+
+
+posterior00 <- posterior_epred(bayes_dm00)
+
+# Output corresponds to [chains, RAWMATERIAL (Quartz, Quartzite, Sil), ARTIFACTCLASS (C, F, RT)]
+dimnames(posterior00)[[2]] <- paste0(dir00$STRAT_mod)
+dimnames(posterior00)[[3]] <- c("Quartz", "Quartzite", "Silcrete")
+# Example: compare Flake proportions between Quartz (row 1) and Quartzite (row 2)
+tab00 <- list()
+result00 <- list()
+c <- 1
+for(i in 1:length(dimnames(posterior00)[[2]])) {
+  for(k in 1:(length(dimnames(posterior00)[[2]]))){
+    for(j in 1:(length(dimnames(posterior00)[[3]]))){
+    
+          name <- paste(dimnames(posterior00)[[2]][i], 
+                        dimnames(posterior00)[[3]][j],
+                        dimnames(posterior00)[[2]][k],
+                        dimnames(posterior00)[[3]][j])
+  
+  
+      
+          diff <- posterior00[, i, j] - posterior00[, k, j]
+  
+  
+    
+        
+          tab00[[name]] <- round(diff, 3)
+    
+        
+          result00[[name]] <- mean(diff > 0)
+        }
+        
+      }
+      
+    }
+
+      
+  
+#print(result00[seq(1,length(result00),3)])
+
+names <- df |> arrange(df$STRAT_mod) |> distinct(STRAT_mod)
+quartz_matrix = matrix(result00[seq(1,length(result00),3)],
+          nrow = 7, ncol = 7,
+       dimnames = list(c(names$STRAT_mod),
+                       c(names$STRAT_mod)))
+
+quartzite_matrix = matrix(result00[seq(2,length(result00),3)],
+          nrow = 7, ncol = 7,
+       dimnames = list(c(names$STRAT_mod),
+                       c(names$STRAT_mod)))
+
+silcrete_matrix = matrix(result00[seq(3,length(result00),3)],
+          nrow = 7, ncol = 7,
+       dimnames = list(c(names$STRAT_mod),
+                       c(names$STRAT_mod)))
+
+quartz_matrix
+quartzite_matrix
+silcrete_matrix
+```
+
+```{r RMGGplot}
+#| message: false
+#| warning: false
+
+df |>
+  filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
+  group_by(STRAT_mod, RAWMATERIAL, ARTIFACTCLASS) |>
+  summarize(Freq = n()) |>
+  mutate(cs = sum(Freq),
+         prop = Freq/cs) |>
+  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = prop, fill = ARTIFACTCLASS))+
+  geom_col()+
+  facet_wrap(~RAWMATERIAL)+
+  labs(fill = "",
+       x = "Coastal-to-Terrestrial\nFoods",
+       y = "Proportion") +
+  theme_minimal()+
+  theme_classic(base_size = 18)+
+  scale_fill_manual(values = cols)+
+  theme(axis.text.x = 
+          element_text(angle = 45, hjust = 1)) -> RM_plot2
+
+```
+
+```{r fig-Figure5}
+
+png("../results/figures/fig6.png", width = 220, height = 200,
+    units = "mm", res = 300)
+
+ggarrange(
+  RM_plot2,
+  align = "h",
+  common.legend = TRUE
+)
+
+dev.off()
+
+```
+
+```{r Dirchlet_Prop_Individual}
+# Bayesian test
+K <- 3 # Number of classes
+delta = 0.0001
+
+dir <- df |>
+  group_by(RAWMATERIAL, ARTIFACTCLASS, STRAT_mod) |>
+  count() |>
+  pivot_wider(names_from = ARTIFACTCLASS, values_from = n, values_fill = 0) |>
+  mutate(total = Core + Flake + RetouchedTool,
+         
+         Core_prop = Core/total,
+         Flake_prop = Flake/total,
+         RetouchedTool_prop = RetouchedTool/total,
+         
+         # Apply a negligible offset to account for 0 probabilities
+         Core_propK = (Core + delta) / (total + K*delta),
+         Flake_propK = (Flake + delta) / (total + K*delta),
+         RetouchedTool_propK = (RetouchedTool + delta) / (total + K*delta),
+         
+         y = cbind(Core_propK, Flake_propK, RetouchedTool_propK)
+         ) |>
+  select(RAWMATERIAL, STRAT_mod,
+         Core_prop, Core_propK,
+         Flake_prop, Flake_propK,
+         RetouchedTool_prop, RetouchedTool_propK,
+         y)
+
+
+my_prior <- 
+  prior(normal(0.5, 1), class = "Intercept", dpar = "mu2") +
+  prior(normal(0.3, 1), class = "Intercept", dpar = "mu3") +
+  
+  prior(normal(0.5, 0.5), class = "b", dpar = "mu2") +
+  prior(normal(0.5, 0.5), class = "b", dpar = "mu3") +
+  
+  prior(exponential(1), class = "phi")  
+
+bayes_dmi <- brm(
+  y ~ RAWMATERIAL*STRAT_mod,
+  family = dirichlet(),
+  data = dir,
+  prior = my_prior,
+  iter = 4000,
+  seed = 818777830,
+  chains = 4,
+  save_pars = save_pars(all = TRUE),
+  cores = getOption("mc.cores", 14)
+)
+
+
+posterior2 <- posterior_epred(bayes_dmi)
+
+# Output corresponds to [chains, RAWMATERIAL (Quartz, Quartzite, Sil), ARTIFACTCLASS (C, F, RT)]
+dimnames(posterior2)[[2]] <- paste(dir$RAWMATERIAL, dir$STRAT_mod, sep = "_")
+dimnames(posterior2)[[3]] <- c("Core", "Flake", "Retouched Tool")
+# Example: compare Flake proportions between Quartz (row 1) and Quartzite (row 2)
+tab2 <- list()
+result2 <- list()
+c <- 1
+for(i in 1:length(dimnames(posterior2)[[2]])) {
+  for(k in 1:length(dimnames(posterior2)[[2]])) {
+    for(j in 1:length(dimnames(posterior2)[[3]])) {
+      
+  
+      name <- paste(dimnames(posterior2)[[2]][i], 
+                    dimnames(posterior2)[[3]][j],
+                    dimnames(posterior2)[[2]][k], 
+                    dimnames(posterior2)[[3]][j])
+  
+  
+      diff <- posterior2[, i, j] - posterior2[, k, j]
+  
+  
+      tab2[[name]] <- round(diff, 3)
+      result2[[name]] <- mean(diff > 0)
+      
+    }
+  }
+}
+  
+#print(result2)
+
+names <- df |> arrange(df$STRAT_mod) |> distinct(STRAT_mod)
+
+# Quartz results
+Quartz_core_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartz") & contains("Core") &
+           !(contains("Quartzite") | contains("Silcrete"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Quartz_flake_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartz") & contains("Flake") &
+           !(contains("Quartzite") | contains("Silcrete"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Quartz_RetouchedTool_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartz") & contains("Retouched Tool") &
+           !(contains("Quartzite") | contains("Silcrete"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Quartz_core_matrix
+Quartz_flake_matrix
+Quartz_RetouchedTool_matrix
+
+# Quartzite results
+Quartzite_core_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartzite") & contains("Core") &
+           !(contains("Quartz_") | contains("Silcrete_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Quartzite_flake_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartzite") & contains("Flake") &
+           !(matches("Quartz_") | contains("Silcrete_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Quartzite_RetouchedTool_matrix <- result2 |> as.tibble() |> 
+  select(contains("Quartzite") & contains("Retouched Tool") &
+           !(contains("Quartz_") | contains("Silcrete_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+
+Quartzite_core_matrix
+Quartzite_flake_matrix
+Quartzite_RetouchedTool_matrix
+
+# Silcrete results
+Silcrete_core_matrix <- result2 |> as.tibble() |> 
+  select(contains("Silcrete") & contains("Core") &
+           !(contains("Quartz_") | contains("Quartzite_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Silcrete_flake_matrix <- result2 |> as.tibble() |> 
+  select(contains("Silcrete") & contains("Flake") &
+           !(matches("Quartz_") | contains("Quartzite_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Silcrete_RetouchedTool_matrix <- result2 |> as.tibble() |> 
+  select(contains("Silcrete") & contains("Retouched Tool") &
+           !(contains("Quartz_") | contains("Quartzite_"))) |>
+  matrix(ncol = 7, nrow = 7,
+         dimnames = list(c(names$STRAT_mod),
+                         c(names$STRAT_mod)))
+
+Silcrete_core_matrix
+Silcrete_flake_matrix
+Silcrete_RetouchedTool_matrix
+```
+
+```{r CortexGGplot}
+#| warning: false
+#| message: false
+
+# calculate the cortical to noncortical ratio based on percent of cortex and artifact surface area
+################## Bootstrap for modified Strats #####################
+iter = 100
+df_cortex_boot <- tibble(STRAT_mod = character(),
+                         ratio = numeric(),
+                         RAWMATERIAL = character(),
+                         sample = numeric())
+set.seed(234567890)
+for(i in 1:iter){
+df |>
+  mutate(SA = ifelse(ARTIFACTCLASS == "Core", (4*pi)*
+           ((((((MAXLENGTH/2)*(MAXWIDTH/2))^1.6075)+
+           (((MAXLENGTH/2)*(MAXTHICKNESS/2))^1.6075)+
+           (((MAXWIDTH/2)+(MAXTHICKNESS/2))^1.6075))/3)^(1/1.6075)),
+           MAXLENGTH*MAXWIDTH),
+         
+         cortical = ifelse(CORTEX == "0%", 0,
+                    ifelse(CORTEX == "1-10", 0.05,
+                    ifelse(CORTEX == "11-40%", 0.25,
+                    ifelse(CORTEX == "41-60%", 0.5,
+                    ifelse(CORTEX == "61-90%", 0.75, 
+                    ifelse(CORTEX == "91-99%", 0.95,1)))))),
+         
+         C_SA = SA*cortical) |>
+  mutate(NC_SA = ifelse(CORTEX == "0%", SA, 0),
+         STRAT_mod = factor(STRAT_mod,
+                            levels = c("8.4", "25.5", "26.6",
+                                       "27.2", "29.6", "37.1", "49.8"))) |>
+  select(STRAT_mod, RAWMATERIAL, SA, C_SA, NC_SA, cortical) |>
+  slice_sample(n = nrow(df), replace = T) |>
+  filter(SA < 2000) |>
+  group_by(STRAT_mod, RAWMATERIAL) |>
+  summarize(cortical_sum = sum(C_SA),
+            noncortical_sum = sum(NC_SA),
+            ratio = cortical_sum/noncortical_sum,
+            sample = i) |>
+  select(ratio, RAWMATERIAL, sample) -> df_cortex
+  
+  df_cortex_boot <- rbind(df_cortex, df_cortex_boot)
+}
+
+# Compute cortical to noncortical ratio from empirical data
+df_emp_cortex <- df |>
+    mutate(SA = ifelse(ARTIFACTCLASS == "Core", (4*pi)*
+           ((((((MAXLENGTH/2)*(MAXWIDTH/2))^1.6075)+
+           (((MAXLENGTH/2)*(MAXTHICKNESS/2))^1.6075)+
+           (((MAXWIDTH/2)+(MAXTHICKNESS/2))^1.6075))/3)^(1/1.6075)),
+           MAXLENGTH*MAXWIDTH),
+         
+         cortical = ifelse(CORTEX == "0%", 0,
+                    ifelse(CORTEX == "1-10", 0.05,
+                    ifelse(CORTEX == "11-40%", 0.25,
+                    ifelse(CORTEX == "41-60%", 0.5,
+                    ifelse(CORTEX == "61-90%", 0.75, 
+                    ifelse(CORTEX == "91-99%", 0.95,1)))))),
+         
+         C_SA = SA*cortical) |>
+  mutate(NC_SA = ifelse(CORTEX == "0%", SA, 0)) |>
+  filter(SA < 2000) |>
+  group_by(STRAT_mod, RAWMATERIAL) |>
+  summarize(cortical_sum = sum(C_SA),
+            noncortical_sum = sum(NC_SA),
+            ratio = cortical_sum/noncortical_sum)
+  
+
+# Plot cortical to noncortical ratios with error bars from bootstrap data
+df_cortex_boot |>
+  filter(RAWMATERIAL != "Silcrete") |>
+  group_by(RAWMATERIAL, STRAT_mod) |>
+  summarise(lower_CI = quantile(ratio, 0.025, na.rm = T),
+            upper_CI = quantile(ratio, probs = 0.975, na.rm = T),
+            median = quantile(ratio, probs = 0.5, na.rm = T))|>
+  mutate(STRAT_mod = fct_relevel(STRAT_mod, c("8.4", "25.5", "26.6",
+                                       "27.2", "29.6", "37.1", "49.8"))) |>
+  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = median, fill = RAWMATERIAL))+
+  geom_bar(stat = "identity", position = "dodge")+
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI, colour = "grey"),
+                position = "dodge")+
+  labs(fill = "",
+       x = "Coastal-to-Terrestrial Foods",
+       y = "Cortical-to-Noncortical") +
+  theme_minimal()+
+  guides(colour = "none")+
+  scale_fill_manual(values = cols)+
+  theme(text = element_text(size= 20)) -> cort_plot2
+
+rm(df_cortex_boot)
+```
+
+```{r fig-Figure6}
+png("../results/figures/fig7.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+ggarrange(
+  cort_plot2,
+  align = "h",
+  font.label = list(size = 25, face = "bold"),
+  common.legend = TRUE
+)
+
+dev.off()
+```
