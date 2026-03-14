@@ -280,152 +280,22 @@ df_cores |>
   theme(axis.text.x = 
           element_text(angle = 45, hjust = 1)) -> core_conard
 
-########################## Sub Typology #############################
 
-df_cores |>
-  filter(CORESUBTYPOLOGY %in% c("Bladelet", "Radial", "Irregular")) |>
-  group_by(STRAT_mod, RAWMATERIAL) |>
-  mutate(total = n()) |>
-  group_by(STRAT_mod, RAWMATERIAL, CORESUBTYPOLOGY, total) |>
-  count() |>
-  summarize(prop = n/total) |>
-  
-  ggplot(aes(x = factor(STRAT_mod,ordered = TRUE), y = prop, fill = factor(CORESUBTYPOLOGY)))+
-  geom_bar(stat = "identity") +
-  facet_wrap(~RAWMATERIAL) +
-  
-  labs(fill = "",
-       x = "Layers",
-       y = "Proportion") +
-  theme_minimal()+
-  theme_classic(base_size = 20)+
-  scale_fill_viridis_d()+
-  theme(axis.text.x = 
-          element_text(angle = 45, hjust = 1)) -> core_subtype
+png("../results/figures/Figure9.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+  ggarrange(
+  core_conard,
+  font.label = list(size = 25, face = "bold"),
+  widths = c(2, 1), heights = c(1.5, 1),
+  label.y = c(1, 1.2),
+  label.x = c(0.05, 0.05)
+  )
+
+dev.off()
 ```
 
 ###### Core Type Bayesian Test
-
-```{r}
-fit_df <- df_cores |>
-  mutate(STRAT_mod = as.factor(STRAT_mod))
-
-my_prior <- c(
-  prior(normal(10, 5), class = "Intercept", dpar = "muCoreReducedPiece"),
-  prior(normal(15, 5), class = "Intercept", dpar = "muFlatBladelet"),
-  prior(normal(60, 10), class = "Intercept", dpar = "muIrregular"),
-  prior(normal(10, 5), class = "Intercept", dpar = "muRadial"),
-  prior(normal(5, 3), class = "Intercept", dpar = "muRiceGrain")
-)
-
-bayes_cat <- brm(CORESUBTYPOLOGY ~ 1 + (1 | STRAT_mod/RAWMATERIAL),
-                 family = categorical(),
-                 data = fit_df,
-                  prior = my_prior,
-                  iter = 4000,
-                  seed = 123,
-                  chains = 4,
-                  control = list(adapt_delta = 0.99),
-                  save_pars = save_pars(all = TRUE),
-                  cores = getOption("mc.cores", parallel::detectCores())
-)
-
-
-
-newdat <- expand.grid(
-  STRAT_mod = unique(fit_df$STRAT_mod),
-  RAWMATERIAL = unique(fit_df$RAWMATERIAL)
-)
-
-props <- bayes_cat |>
-  epred_draws(
-    newdata = newdat,
-    allow_new_levels = TRUE,
-    re_formula = NULL   # include strat-level random effects
-  ) |>
-  group_by(STRAT_mod, RAWMATERIAL, .category) |>
-  summarise(
-    mean = mean(.epred),
-    l95  = quantile(.epred, 0.05),
-    u95  = quantile(.epred, 0.95),
-    .groups = "drop"
-  ) |>
-  rename("CORESUBTYPOLOGY" = ".category")
-
-
-
-ggplot(props, aes(x = STRAT_mod, y = mean, fill = CORESUBTYPOLOGY)) +
-  geom_col(position = "dodge") +
-  geom_errorbar(
-    aes(ymin = l95, ymax = u95),
-    position = position_dodge(width = 0.9),
-    width = 0.2
-  ) +
-  facet_wrap(~RAWMATERIAL)+
-  labs(
-    y = "Proportion",
-    x = "Coastal-to-Terrestrial\nFoods"
-  ) +
-  theme_minimal()
-
-
-```
-
-```{r}
-# posterior comparison
-pp <- fit_df |>
-  add_epred_draws(bayes_cat, ndraws = 500) |> 
-  group_by(.draw, STRAT_mod, RAWMATERIAL, .category) %>%
-  summarise(prob = mean(.epred), .groups = "drop")
-
-pp |>
-  filter(.category == "Bladelet") |>
-  pivot_wider(
-    names_from = c(STRAT_mod),
-    values_from = prob
-  ) |>
-  na.omit() |>
-  mutate(
-    diff1 = `8.4` - `26.6`,
-    diff2 = `8.4` - `27.2`,
-    diff3 = `8.4` - `25.5`,
-    diff4 = `8.4` - `29.6`,
-    diff5 = `8.4` - `37.1`,
-    diff6 = `8.4` - `49.8`,
-    
-    diff7 = `26.6` - `27.2`,
-    diff8 = `26.6` - `25.5`,
-    diff9 = `26.6` - `29.6`,
-    diff10 = `26.6` - `37.1`,
-    diff11 = `26.6` - `49.8`,
-    
-    diff12 = `27.2` - `25.5`,
-    diff13 = `27.2` - `29.6`,
-    diff14 = `27.2` - `37.1`,
-    diff15 = `27.2` - `49.8`,
-    
-    diff16 = `25.5` - `29.6`,
-    diff17 = `25.5` - `37.1`,
-    diff18 = `25.5` - `49.8`,
-    
-    diff19 = `29.6` - `37.1`,
-    diff20 = `29.6` - `49.8`,
-    
-    diff21 = `37.1` - `49.8`
-    
-  ) |>
-  summarise(across(diff1:diff21, list(mean = mean, 
-                                      lwr = ~quantile(.x,probs = 0.05),
-                                      upr = ~quantile(.x,probs = 0.95)))) |>
-  
-  matrix(ncol = 3, nrow = 21, byrow = TRUE) |>
-  as_tibble() |>
-  rename("mu" = "V1", "lwr" = "V2", "upr" = "V3") |>
-  mutate(mu = as.numeric(mu),
-         lwr = as.numeric(lwr),
-         upr = as.numeric(upr)) 
-
-```
 
 ```{r}
 fit_df <- df_cores |>
@@ -470,22 +340,6 @@ props <- bayes_cat |>
   ) |>
   rename("CONARDUNIFIEDTYPOLOGY" = .category)
 
-
-
-ggplot(props, aes(x = STRAT_mod, y = mean, fill =CONARDUNIFIEDTYPOLOGY)) +
-  geom_col(position = "dodge") +
-  geom_errorbar(
-    aes(ymin = l95, ymax = u95),
-    position = position_dodge(width = 0.9),
-    width = 0.2
-  ) +
-  facet_wrap(~ RAWMATERIAL)+
-  labs(
-    y = "Estimated proportion",
-    x = "Stratigraphic module",
-    fill = "Core Typology"
-  ) +
-  theme_minimal()
 
 ```
 
@@ -644,7 +498,6 @@ post
 
 ```{r}
 
-
 fit_CE_anova <- brm(CE ~ STRAT_mod*RAWMATERIAL,
                data = fit_df,
   family = Gamma(link = "log"),
@@ -703,7 +556,7 @@ fit_CE_anova |>
 ```
 
 ```{r}
-png("../results/figures/fig10.png", width = 290, height = 220,
+png("../results/figures/Figure10.png", width = 290, height = 220,
     units = "mm", res = 300)
 
 
@@ -959,6 +812,15 @@ slope_summary <- slope_draws |>
   )
 
 
+  ggarrange(
+  core_conard,
+  font.label = list(size = 25, face = "bold"),
+  widths = c(2, 1), heights = c(1.5, 1),
+  label.y = c(1, 1.2),
+  label.x = c(0.05, 0.05)
+  )
+
+dev.off()
 ggplot(slope_summary, aes(Reduction_s, mean)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = lwr, ymax = upr),
@@ -1024,6 +886,10 @@ slope_group_summary <- slope_group_draws |>
     .groups = "drop"
   )
 
+png("../results/figures/Figure13a.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+
 ggplot(slope_group_summary,
        aes(Reduction_s, mean, color = group)) +
   geom_line(linewidth = 1) +
@@ -1037,6 +903,8 @@ ggplot(slope_group_summary,
   ) +
   theme_minimal()+
   guides(fill = "none")
+
+dev.off()
 ```
 
 ```{r}
@@ -1052,7 +920,7 @@ positive_prob <- slope_group_draws |>
   group_by(group) |>
   summarize(max = max(Reduction_s))
 
-positive_prob
+#positive_prob
 
 # Expected slope for each strat at specified reduction value
 em_slopes_resp <- emtrends(
@@ -1065,9 +933,14 @@ em_slopes_resp <- emtrends(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
+png("../results/figures/Figure13b.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
 plot(em_slopes_resp)+
   xlab(expression(Delta*"Utility-to-Reduction"))+
   ylab("Ratio")
+
+dev.off()
 pairs(em_slopes_resp)
 
 
@@ -1082,8 +955,8 @@ em_slopes_resp <- emmeans(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
-plot(em_slopes_resp)
-pairs(em_slopes_resp)
+#plot(em_slopes_resp)
+#pairs(em_slopes_resp)
 ```
 
 ```{r}

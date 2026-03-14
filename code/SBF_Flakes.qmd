@@ -224,8 +224,6 @@ core_bind <- full_join(core_size, df) |>
   filter(ARTIFACTCLASS == "Flake" & COMPLETENESS == "Complete") |>
   group_by(RAWMATERIAL, STRAT) |>
   mutate(Utility_small = TECHLENGTH*(TECHLENGTH - small),
-         Utility_mid = TECHLENGTH*(TECHLENGTH - medium),
-         Utility_large = TECHLENGTH*(TECHLENGTH - large),
          
          Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3),
          
@@ -289,7 +287,7 @@ sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv") |>
 
 ```{r fig-Figure10}
 
-png("../results/figures/fig14.png", width = 185, height = 120,
+png("../results/figures/supp3.png", width = 185, height = 120,
     units = "mm", res = 300)
 # Data pulled from Jerardino, 2022
 sbf_df |>
@@ -333,156 +331,6 @@ dev.off()
 ```
 
 ## Flake Descriptions
-
-#### Platform abrasion
-
-```{r}
-df.flakes |>
-  filter(PLATFORM == "Yes",
-         PLATABRASION %in% c("No", "Yes")) |>
-  group_by(STRAT_modn, RAWMATERIAL) |>
-  mutate(total = n()) |>
-  group_by(STRAT_modn, RAWMATERIAL, PLATABRASION, total) |>
-  count() |>
-  na.omit() |>
-  summarize(prop = n/total) |>
-  
-  ggplot(aes(x = factor(STRAT_modn, ordered = T), y = prop,
-             fill = factor(PLATABRASION)))+
-  geom_bar(stat = "identity") +
-  facet_wrap(~RAWMATERIAL) +
-  
-  labs(fill = "",
-       x = "Cultural Phase",
-       y = "Proportion") +
-  theme_minimal()+
-  theme_classic(base_size = 20)+
-  scale_fill_manual(values = cols)+
-  theme(axis.text.x = 
-          element_text(angle = 45, hjust = 1)) -> plat_ab1
-
-
-
-df.flakes |>
-  filter(PLATFORM == "Yes",
-         PLATABRASION %in% c("No", "Yes")) |>
-  group_by(STRAT_mod, RAWMATERIAL) |>
-  mutate(total = n()) |>
-  group_by(STRAT_mod, RAWMATERIAL, PLATABRASION, total) |>
-  count() |>
-  na.omit() |>
-  summarize(prop = n/total) |>
-  
-  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = prop,
-             fill = factor(PLATABRASION)))+
-  geom_bar(stat = "identity") +
-  facet_wrap(~RAWMATERIAL) +
-  
-  labs(fill = "",
-       x = "Coastal-to-Terrestrial\nFoods",
-       y = "Proportion") +
-  theme_minimal()+
-  theme_classic(base_size = 20)+
-  scale_fill_manual(values = cols)+
-  theme(axis.text.x = 
-          element_text(angle = 45, hjust = 1),
-        axis.title.x = element_text(vjust = 15)) -> plat_ab2
-```
-
-```{r}
-png("../results/figures/fig8.png",width = 200, height = 220,
-    units = "mm", res = 300)
-
-ggarrange(
-  plat_ab2, plat_ab1, nrow = 2,
-  align = "h", labels = c("A", "B"),
-  common.legend = TRUE
-)
-
-dev.off()
-```
-
-```{r Dirchlet_Prop_Ind00}
-# Bayesian test
-dir0 <- df.flakes |>
-  filter(PLATFORM == "Yes",
-         PLATABRASION %in% c("No", "Yes")) |>
-  group_by(RAWMATERIAL, STRAT_mod) |>
-  mutate(STRAT_mod = factor(STRAT_mod)) |>
-  count() |>
-  pivot_wider(names_from = RAWMATERIAL, values_from = n, values_fill = 0) |>
-  mutate(total = Quartz + Quartzite + Silcrete,
-         
-         Quartz_prop = Quartz/total,
-         Quartzite_prop = Quartzite/total,
-         Silcrete_prop = Silcrete/total,
-         
-         y = cbind(Quartz_prop, Quartzite_prop, Silcrete_prop),
-         )
-
-
-my_prior <- 
-  prior(normal(0,1), class = "Intercept") +
-  prior(normal(0,1), class = "b", coef = "STRAT_mod25.5")+
-  prior(normal(0,1), class = "b", coef = "STRAT_mod26.6")+
-  prior(normal(0,1), class = "b", coef = "STRAT_mod27.2")+
-  prior(normal(0,1), class = "b", coef = "STRAT_mod29.6")+
-  prior(normal(0,1), class = "b", coef = "STRAT_mod37.1")+
-  prior(normal(0,1), class = "b", coef = "STRAT_mod49.8")+
-  
-  prior(exponential(1), class = "phi")
-
-bayes_beta0 <- brm(
-  Quartz_prop ~ STRAT_mod,
-  family = Beta(),
-  data = dir0,
-  prior = my_prior,
-  iter = 4000,
-  seed = 77600123,
-  chains = 4,
-  control = list(adapt_delta = 0.99, max_treedepth = 15),
-  save_pars = save_pars(all = TRUE),
-  cores = getOption("mc.cores", 14)
-)
-
-
-# create data with one row per group
-newdata <- data.frame(STRAT_mod = levels(dir0$STRAT_mod))
-
-# posterior predictions on response scale
-post_preds <- posterior_epred(bayes_beta0, newdata = newdata)  # matrix: iterations x groups
-
-# summary: posterior mean and 95% credible interval per group
-summ <- apply(post_preds, 2, function(x) {
-  c(mean = mean(x), quantile(x, c(0.025, 0.975)))
-}) |>
-  t() |> as_tibble()
-
-summ$STRAT_mod <- levels(dir0$STRAT_mod)
-summ
-
-
-# Evaluate whether any group differenecs are significantly different
-vars <- c(unique(summ$STRAT_mod))
-pairwise_diffs <- combn(vars, 2, simplify = FALSE)
-
-post_preds |>
-  as_tibble() |>
-  rename("8.4" = V1, "25.5" = V2, "26.6" = V3, "27.2" = V4,
-         "29.6" = V5, "37.1" = V6, "49.8" = V7) |>
-  mutate(
-    !!!set_names(
-      lapply(pairwise_diffs, \(pair) expr(!!sym(pair[1]) - !!sym(pair[2]))),
-      sapply(pairwise_diffs, \(x) paste0("diff_", x[1], "_", x[2]))
-    )
-  ) |>
-  select(`diff_8.4_25.5`:`diff_37.1_49.8`) |>
-  pivot_longer(cols = `diff_8.4_25.5`:`diff_37.1_49.8`,
-               values_to = "Delta", names_to = "Diffs") |>
-  group_by(Diffs) |>
-  summarize(Q_05 = quantile(Delta, 0.05),
-            Q_95 = quantile(Delta, 0.95))
-```
 
 #### Cutting edge to mass
 
@@ -528,7 +376,7 @@ df.flakes |>
        y = "Cutting Edge/\nMass") +
   theme_minimal()+
   theme_classic(base_size = 20)+
-  scale_fill_manual(values = cols)+
+  scale_fill_viridis_d()+
   theme(axis.text.x = 
           element_text(angle = 45, hjust = 1)) +
   guides(color = "none")-> flake_trans2
@@ -536,7 +384,7 @@ df.flakes |>
 ```
 
 ```{r}
-png("../results/figures/fig9_1.png", width = 290, height = 120, units = "mm", res = 300)
+png("../results/figures/supp2.png", width = 290, height = 120, units = "mm", res = 300)
 
 ggarrange(
   flake_trans2,
@@ -651,7 +499,7 @@ pp_check(fit_cutting_phase, type = "dens_overlay_grouped",
          group = "RAWMATERIAL")
 pp_check(fit_cutting_phase, type = "stat_grouped", 
          group = "RAWMATERIAL")
-pp_check(fit_cuttin_phase, type = "scatter_avg_grouped",
+pp_check(fit_cutting_phase, type = "scatter_avg_grouped",
          group = "RAWMATERIAL")
 
 loo1 <- loo(fit_cuttingEdge, moment_match = T)
@@ -694,8 +542,8 @@ fit_df |>
 
 # Categorical cutting edge by cultural phase
 ce <- conditional_effects(fit_cutting_phase, effects = "STRAT_mod:RAWMATERIAL", spaghetti = TRUE)
-plot(ce, plot = FALSE)[[1]] +
-    ggplot2::labs(x = "STRAT_modn (continuous)", y = "Cutting Edge (predicted)")
+#plot(ce, plot = FALSE)[[1]] +
+    #ggplot2::labs(x = "STRAT_modn (continuous)", y = "Cutting Edge (predicted)")
 
 fit_cutting_phase |>
   epred_draws(
@@ -716,12 +564,6 @@ fit_cutting_phase |>
           text = element_text(size = 18),
           legend.position = "none") +
   ylab("Posterior Median Cutting Edge/\nMass") + xlab("Coastal-to-Terrestrial\nFoods") -> CE_plot2
-    
-post_comp |>
-  pivot_longer(cols = Q_1_2:S_6_7, names_to = "Comparison", 
-               values_to = "Post") |>
-  group_by(Comparison) |>
-  summarize(`Prob > 0` = mean(Post > 0))
 
 # Test pairwise comparisons
 pairs(emmeans(fit_cutting_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
@@ -735,7 +577,7 @@ mean(posterior$`b_STRAT_mod_s:RAWMATERIALSilcrete` > 0)
 ```
 
 ```{r}
-png("../results/figures/fig9.png", width = 290, height = 220,
+png("../results/figures/Figure7.png", width = 290, height = 220,
     units = "mm", res = 300)
 
 ggarrange(
@@ -770,7 +612,7 @@ df.flakes |>
        y = "Flake Elongation") +
   theme_minimal()+
   theme_classic(base_size = 18)+
-  scale_fill_manual(values = cols)+
+  scale_fill_viridis_d()+
   theme(axis.text.x = 
           element_text(angle = 45, hjust = 1))+
   guides(color = "none") -> flake_elong2
@@ -778,7 +620,7 @@ df.flakes |>
 ```
 
 ```{r}
-png("../results/figures/fig11.png", width = 290, height = 120,
+png("../results/figures/Supp3.png", width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -927,7 +769,7 @@ epred_draws(fit_Elong, newdata = new_data) |>
   scale_y_continuous("") +
   labs(x = "Fish → Non-fish (Standardized)") +
   theme(legend.title = "") +
-  theme_classic(base_size = 18) -> Elong1
+  theme_classic(base_size = 18) -> Elong_plot1
 
 post <- as_draws_df(fit_Elong) |>
   mutate(Quartzite = b_STRAT_mod_s +
@@ -973,7 +815,7 @@ pairs(emmeans(fit_Elong_phase, ~ STRAT_mod | RAWMATERIAL),
 ```
 
 ```{r}
-png("../results/figures/fig12.png", width = 290, height = 220,
+png("../results/figures/Figure8.png", width = 290, height = 220,
     units = "mm", res = 300)
 
 ggarrange(
@@ -1308,6 +1150,9 @@ slope_group_summary <- slope_group_draws |>
     .groups = "drop"
   )
 
+
+png("../results/figures/Figure12a.png", width = 290, height = 220,
+    units = "mm", res = 300)
 ggplot(slope_group_summary,
        aes(Reduction_s, mean, color = group)) +
   geom_line(linewidth = 1) +
@@ -1322,6 +1167,8 @@ ggplot(slope_group_summary,
   ) +
   theme_minimal()+
   guides(fill = "none")
+
+dev.off()
 
 ```
 
@@ -1338,7 +1185,7 @@ positive_prob <- slope_group_draws |>
   group_by(group) |>
   summarize(max = max(Reduction_s))
 
-positive_prob
+#positive_prob
 
 # Expected slope for each strat at specified reduction value
 em_slopes_resp <- emtrends(
@@ -1351,10 +1198,14 @@ em_slopes_resp <- emtrends(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
+
+png("../results/figures/Figure12b.png", width = 290, height = 220,
+    units = "mm", res = 300)
 plot(em_slopes_resp)+
   xlab(expression(Delta*"Utility-to-Reduction"))+
   ylab("Ratio")
-pairs(em_slopes_resp)
+dev.off()
+#pairs(em_slopes_resp)
 
 
 # Expected Utility for each strat at specified reduction value
@@ -1368,7 +1219,7 @@ em_slopes_resp <- emmeans(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
-plot(em_slopes_resp)+xlab("why?")
-pairs(em_slopes_resp)
+#plot(em_slopes_resp)+xlab("why?")
+#pairs(em_slopes_resp)
 
 ```

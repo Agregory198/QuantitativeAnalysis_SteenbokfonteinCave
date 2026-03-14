@@ -4,6 +4,12 @@ format: html
 editor: visual
 ---
 
+```{r}
+# Run this to restore the environment
+#install.packages("renv")
+#renv::restore()
+```
+
 ```{r library}
 #| warning: false
 #| message: false
@@ -48,11 +54,6 @@ library(emmeans)
 library(loo)
 library(BayesFactor)
 library(posterior)
-```
-
-```{r diversity}
-# Load the context associations
-ctx <- read_csv("../data/SBF_Context.csv")
 ```
 
 ```{r ReadData}
@@ -303,13 +304,13 @@ df |>
        y = "Proportion") +
   theme_minimal()+
   theme_classic(base_size = 18)+
-  scale_fill_manual(values = cols)+
+  scale_fill_viridis_d()+
   theme(axis.text.x = 
           element_text(angle = 45, hjust = 1)) -> RM_plot00
 ```
 
 ```{r}
-png("../results/figures/fig5.png", width = 290, height = 120,
+png("../results/figures/Figure4.png", width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -395,9 +396,6 @@ for(i in 1:length(dimnames(posterior00)[[2]])) {
       
     }
 
-      
-  
-#print(result00[seq(1,length(result00),3)])
 
 names <- df |> arrange(df$STRAT_mod) |> distinct(STRAT_mod)
 quartz_matrix = matrix(result00[seq(1,length(result00),3)],
@@ -438,7 +436,7 @@ df |>
        y = "Proportion") +
   theme_minimal()+
   theme_classic(base_size = 18)+
-  scale_fill_manual(values = cols)+
+  scale_fill_viridis_d()+
   theme(axis.text.x = 
           element_text(angle = 45, hjust = 1)) -> RM_plot2
 
@@ -446,7 +444,7 @@ df |>
 
 ```{r fig-Figure5}
 
-png("../results/figures/fig6.png", width = 220, height = 200,
+png("../results/figures/Figure5.png", width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -711,14 +709,14 @@ df_cortex_boot |>
        y = "Cortical-to-Noncortical") +
   theme_minimal()+
   guides(colour = "none")+
-  scale_fill_manual(values = cols)+
+  scale_fill_viridis_d()+
   theme(text = element_text(size= 20)) -> cort_plot2
 
 rm(df_cortex_boot)
 ```
 
 ```{r fig-Figure6}
-png("../results/figures/fig7.png", width = 290, height = 120,
+png("../results/figures/Figure6.png", width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -726,6 +724,325 @@ ggarrange(
   align = "h",
   font.label = list(size = 25, face = "bold"),
   common.legend = TRUE
+)
+
+dev.off()
+```
+
+# Surplus
+
+```{r AllMass}
+# design model to look at the relationship between artifact mass and the 50th and 75th percentiles
+# filter by values that caused errors in the models
+fit_df <- df |>
+  mutate(RAWMATERIAL = droplevels(RAWMATERIAL)) |>
+      group_by(RAWMATERIAL) |>
+      filter(!(RAWMATERIAL == "Silcrete" & MASS > 100) &
+               !(RAWMATERIAL == "Quartzite" & MASS > 170)) |>
+      mutate(log_MASS = log(MASS),
+             STRAT_mod_s = as.numeric(scale(STRAT_mod, center = T, scale = T)),
+         STRAT_mod = factor(STRAT_mod)) |>
+  select(RAWMATERIAL, STRAT_mod, STRAT_mod_s, MASS)
+
+# Gamma prior for individual layers and Mass
+Gamma_Prior_Mass_Ind <- 
+  prior(normal(0, 0.5), class = "Intercept")+
+  prior(normal(1, 0.5), class = "b", coef = "RAWMATERIALQuartzite")+
+  prior(normal(0, 1), class = "b", coef = "RAWMATERIALSilcrete")+
+  
+  prior(normal(0, 1), class = "b", coef = "STRAT_mod_s")+ 
+  prior(normal(1, 0.5), class = "b", coef = "STRAT_mod_s:RAWMATERIALQuartzite")+
+  prior(normal(-0.5, 1), class = "b", coef = "STRAT_mod_s:RAWMATERIALSilcrete")+
+  
+  prior(gamma(2, 0.5), class = "shape")
+
+
+Gamma_Prior_Mass_All <- 
+  prior(normal(0, 0.5), class = "Intercept")+
+  prior(normal(1, 0.5), class = "b", coef = "RAWMATERIALQuartzite")+
+  prior(normal(0, 1), class = "b", coef = "RAWMATERIALSilcrete")+
+  
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod25.5")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod26.6")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod27.2")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod29.6")+
+  prior(normal(1, 0.5), class = "b", coef = "STRAT_mod37.1")+
+  prior(normal(1, 0.5), class = "b", coef = "STRAT_mod49.8")+
+  
+  prior(gamma(2, 0.5), class = "shape")
+```
+
+```{r fitAllMass}
+
+fit_mass_all_ind <- brm(
+  MASS ~ STRAT_mod_s*RAWMATERIAL,
+  data = fit_df,
+  family = Gamma(link = "log"),
+  prior = Gamma_Prior_Mass_Ind,
+  cores = getOption("mc.cores", parallel::detectCores()),
+  chains = 4,
+  iter = 4000,
+  seed = 2325778
+)
+
+
+fit_mass_all_phase <- brm(
+  MASS ~ STRAT_mod*RAWMATERIAL,
+  data = fit_df,
+  family = Gamma(link = "log"),
+  prior = Gamma_Prior_Mass_All,
+  cores = getOption("mc.cores", parallel::detectCores()),
+  chains = 4,
+  iter = 4000,
+  seed = 20000008
+)
+
+```
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+
+# Posterior checks for individual data
+
+pp_check(fit_mass_all_ind, type = "dens_overlay_grouped",
+         group = "STRAT_mod_s")
+pp_check(fit_mass_all_ind, type = "stat_grouped", 
+         group = "STRAT_mod_s")
+pp_check(fit_mass_all_ind, type = "scatter_avg_grouped",
+         group = "STRAT_mod_s")
+
+pp_check(fit_mass_all_ind, type = "dens_overlay_grouped", 
+         group = "RAWMATERIAL")
+pp_check(fit_mass_all_ind, type = "stat_grouped", 
+         group = "RAWMATERIAL")
+pp_check(fit_mass_all_ind, type = "scatter_avg_grouped",
+         group = "RAWMATERIAL")
+
+loo1 <- loo(fit_mass_all_ind, moment_match = T)
+plot(loo1)
+```
+
+```{r}
+new_data <- expand.grid(
+  STRAT_mod_s = seq(min(fit_df$STRAT_mod_s),
+                  max(fit_df$STRAT_mod_s), length.out = 100),
+  RAWMATERIAL = unique(fit_df$RAWMATERIAL)
+)
+
+
+fit_df |>
+  mutate(RAWMATERIAL = droplevels(RAWMATERIAL)) |>
+  group_by(RAWMATERIAL) |>
+  add_epred_draws(fit_mass_all_ind) |>
+  median_qi(.epred, .width = 0.9) |>
+  
+  ggplot(aes(x = STRAT_mod_s, y = .epred,
+             color = RAWMATERIAL, fill = RAWMATERIAL)) +
+  geom_line(size = 1)  +
+  geom_ribbon(aes(ymin = .lower, ymax = .upper),
+              alpha = 0.2, color = NA) +
+  scale_fill_viridis_d() +
+  scale_color_viridis_d() +
+  scale_y_continuous("Posterior Median Artifact Mass") +
+  labs(x = "Terrestrial → Coastal Resource Use") +
+  theme_classic(base_size = 18)+
+  guides(fill = guide_legend(title = NULL),
+         color = guide_legend(title = NULL))-> Mass_plot1
+
+
+####################################
+median <- fit_df |>
+  group_by(RAWMATERIAL) |>
+  summarize(median = quantile(MASS, prob = 0.5),
+            upr = quantile(MASS, prob = 0.75))
+  
+  
+  
+fit_mass_all_phase |>
+  epred_draws(
+    newdata = distinct(fit_df, STRAT_mod, RAWMATERIAL)
+    ) |>
+  ggplot() +
+  stat_halfeye(aes(x = STRAT_mod, y = .epred),
+               .width = c(.90, .5), scale = 0, linewidth = 1, point_size = 0.7,
+               adjust = 0.8, width = 0.6,
+               orientation = "vertical", point_interval = "median_qi")+
+  geom_hline(data = median, aes(yintercept = median), color = "red")+
+  geom_hline(data = median, aes(yintercept = upr), color = "forestgreen", lty = 2)+
+  facet_wrap(~RAWMATERIAL, scales = "free") +
+  theme_minimal()+
+  theme(legend.title = element_blank())+
+  theme_classic(base_size = 18)+
+  guides(color = "none")+
+    theme(axis.text.x = 
+          element_text(angle = 45, hjust = 1),
+          text = element_text(size = 18),
+          legend.position = "none") +
+  ylab("Posterior Median Artifact Mass") + xlab("Coastal-to-Terrestrial\nFoods") -> Mass_plot2
+
+# Pairwise comparison
+pairs(emmeans(fit_mass_all_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
+
+# Test hypothesis that slopes greater than 0
+posterior <- as_draws(fit_mass_all_ind)$`1` # get posterior draws
+
+mean(posterior$b_STRAT_mod_s > 0)
+mean(posterior$b_STRAT_mod_s+posterior$`b_STRAT_mod_s:RAWMATERIALQuartzite` > 0)
+mean(posterior$b_STRAT_mod_s+posterior$`b_STRAT_mod_s:RAWMATERIALSilcrete` > 0)
+```
+
+```{r}
+png("../results/figures/Figure11.png", width = 290, height = 220,
+    units = "mm", res = 300)
+
+ggarrange(
+  Mass_plot2, Mass_plot1, nrow = 2,
+  font.label = list(size = 25, face = "bold"),
+  common.legend = FALSE, labels = c("A", "B"),
+  widths = c(2, 1), heights = c(1.5, 1),
+  label.y = c(1, 1.23),
+  label.x = c(0.03, 0.03)
+)
+
+dev.off()
+```
+
+```{r}
+
+df |>
+  select(MASS, STRAT, RAWMATERIAL, STRAT_modn) |>
+  group_by(STRAT_modn) |>
+  mutate(Quant_lower75 = quantile(log(MASS), probs = 0.75, na.rm = T),
+         Median_mid50 = quantile(log(MASS), probs = 0.5, na.rm = T),
+         dist_to_lower75 = MASS - Quant_lower75,
+         dist_to_median = MASS - Median_mid50) -> df_mod
+
+hline_aq <- df_mod |> filter(STRAT_modn == "Megamidden") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_mix <- df_mod |> filter(STRAT_modn == "Transitional") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_ter <- df_mod |> filter(STRAT_modn == "Pre-Megamidden") |>
+  distinct(Median_mid50, Quant_lower75)
+
+
+
+df |>
+  select(MASS, STRAT, RAWMATERIAL, STRAT_mod) |>
+  group_by(STRAT_mod) |>
+  mutate(Quant_lower75 = quantile(log(MASS), probs = 0.75, na.rm = T),
+         Median_mid50 = quantile(log(MASS), probs = 0.5, na.rm = T),
+         dist_to_lower75 = MASS - Quant_lower75,
+         dist_to_median = MASS - Median_mid50) -> df_mod
+
+hline_1 <- df_mod |> filter(STRAT_mod == "49.8") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_2 <- df_mod |> filter(STRAT_mod == "37.1") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_3 <- df_mod |> filter(STRAT_mod == "29.6") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_4 <- df_mod |> filter(STRAT_mod == "27.2") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_5 <- df_mod |> filter(STRAT_mod == "26.6") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_6 <- df_mod |> filter(STRAT_mod == "25.5") |>
+  distinct(Median_mid50, Quant_lower75)
+hline_7 <- df_mod |> filter(STRAT_mod == "8.4") |>
+  distinct(Median_mid50, Quant_lower75)
+
+
+fit_df |>
+  mutate(RAWMATERIAL = as.factor(RAWMATERIAL)) |>
+  ggplot(aes(x = factor(STRAT_mod, ordered = TRUE), y = log(MASS),
+             fill = RAWMATERIAL, 
+                   group = interaction(RAWMATERIAL, STRAT_mod)))+
+  geom_boxplot()+
+
+  geom_point(aes(color = "white"),
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             jitter.height = 0, 
+                                             dodge.width = 0.75),
+             alpha = 0.4)+
+  
+  geom_hline(yintercept = mean(df_mod$Median_mid50), color = "darkmagenta",
+             linewidth = 1)+
+  
+  xlab("Coastal-to-Terrestrial\nFoods")+ylab("log-Artifact Mass")+
+  labs(fill = "")+
+  ylim(-5,5)+
+  theme_minimal()+
+  theme(legend.title = element_blank())+
+  theme_classic(base_size = 18)+
+  guides(color = "none")+
+    theme(axis.text.x = 
+          element_text(angle = 45, hjust = 1),
+          text = element_text(size = 18))+
+  scale_fill_viridis_d() -> Art_mass_freqPlot2
+
+
+posterior <- as_draws(fit_mass_all_phase)$`1` # get posterior draws
+
+# Test hypothesis that slopes greater than median
+
+hypothesis(fit_mass_all_phase, paste0("Intercept > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5 > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6 > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2 > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6 > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1 > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8 > ", 
+                                      mean(df_mod$Median_mid50)))
+
+hypothesis(fit_mass_all_phase, paste0("RAWMATERIALQuartzite > ",
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALQuartzite > ", 
+                                      mean(df_mod$Median_mid50)))
+
+hypothesis(fit_mass_all_phase, paste0("RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALSilcrete > ", 
+                                      mean(df_mod$Median_mid50)))
+
+
+```
+
+```{r}
+png("../results/figures/supp1.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+ggarrange(
+  Art_mass_freqPlot2,
+  font.label = list(size = 25, face = "bold"),
+  common.legend = FALSE,
+  widths = c(2, 1), heights = c(1.5, 1)
 )
 
 dev.off()
