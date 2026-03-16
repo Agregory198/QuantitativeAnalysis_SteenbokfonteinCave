@@ -1,0 +1,379 @@
+---
+title: "Jubliee_Comparison"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+```
+
+```{r}
+file_path <- "../data/Artifacts.xlsx"
+sheet_names <- readxl::excel_sheets(path = file_path)
+list_of_dfs <- map(set_names(sheet_names), 
+                   ~readxl::read_excel(path = file_path, sheet = .x))
+```
+
+```{r}
+
+
+lithics <- as_tibble(list_of_dfs$Artifacts) |>
+  mutate(Pottery = PotteryI + PotteryII) |>
+   select(-c(PotteryI, PotteryII))
+
+shells <- as_tibble(list_of_dfs$Shell) |>
+  rename(PostWilton = PotWilton)
+
+bones <- read_csv("../data/bone_artifacts.csv") |>
+  rename(PostWilton = `Post-Wilton`,
+         ELSA = Elsa,
+         Artifact = Category) |>
+  select(-Total)
+
+df_merge <- bind_rows(lithics, shells, bones)
+
+artifacts <- df_merge |>
+  mutate(Artifact = ifelse(Artifact %in% 
+                             c("segments (<25mm)", "segments (>25mm)"),
+                               "segment",
+                    ifelse(Artifact %in% c("backed bladelets (<25mm)",
+                                           "backed blades (>25mm)",
+                                           "irregular backed (<25mm)",
+                                           "irregular backed (>25mm)",
+                                           "medium backed", "small backed"),
+                           "backed",
+                     ifelse(Artifact %in% c("broken backed (<25mm)"),
+                            "broken backed",
+                     ifelse(Artifact %in% c("large scrapers",
+                                            "medium scrapers",
+                                            "small scrapers"),
+                            "scraper", 
+                     ifelse(Artifact %in% c("misc retouched",
+                                            "retouched blades"),
+                            "MRP",
+                     ifelse(Artifact %in% c("small grinders",
+                                            "grooved stone",
+                                            "nutting grinders",
+                                            "ochre grinders",
+                                            "reamers",
+                                            "stone bowl frags"),
+                            "ground stone",
+                     ifelse(Artifact %in% c("thin points",
+                                            "flat points",
+                                            "bopne flakes",
+                                            "linkshafts",
+                                            "shaft frags",
+                                            "blunt shaft ends",
+                                            "spatulate pieces",
+                                            "notched/snapped",
+                                            "fletched ends"),
+                            "bone tool",
+                      ifelse(Artifact %in% c('bone beads',
+                                             'bone rings',
+                                             'decorated frags', 
+                                             'pendants'),
+                             "symbolic",
+                      ifelse(Artifact %in% c('bone flakes',
+                                             'bone tool',
+                                             'polished frags',
+                                             'striated bone'),
+                             "bone tool",
+                      ifelse(Artifact %in% c('awls',
+                                             'bored stones', 
+                                             'burins',
+                                             'incised palettes',
+                                             'misc', 
+                                             'ochre palette',
+                                             'palettes',
+                                             'spokeshaves',
+                                             'broken OES beads',
+                                             'incomplete broken OES beads',
+                                             'water bottle', 'incised OES',
+                                             'decorated OES', 
+                                             'OES pendants', 
+                                             'miscellaneous',
+                                             'cut bone frags'),
+                             "drop",
+                             Artifact))))))))))) |>
+  pivot_longer(PostWilton:Pottery, values_to = "counts",
+               names_to = "layer") |>
+  
+  group_by(Artifact, layer) |>
+  summarize(total = sum(counts))
+
+artifacts <- artifacts |>
+  mutate(Artifact = ifelse(Artifact == "incomplete OES beads",
+                           "unfinished OES beads",
+                    ifelse(Artifact == "whole OES beads",
+                           "finished OES beads",
+                           Artifact)),
+         
+         total = ifelse(layer == "ELSA", 
+                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
+                                                   artifacts$layer=="ELSA")],
+                 ifelse(layer == "Oakhurst", 
+                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
+                                                   artifacts$layer=="Oakhurst")],
+                 ifelse(layer == "Wilton", 
+                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
+                                                   artifacts$layer=="Wilton")],
+                 ifelse(layer == "Pottery", 
+                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
+                                                   artifacts$layer=="Pottery")],
+                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
+                                                   artifacts$layer=="PostWilton")]))))) |>
+  mutate(layer = fct_relevel(layer,
+                             c("Pottery", "PostWilton",
+                               "Wilton", "Oakhurst",
+                               "ELSA")),
+         c = rep("Jubilee", n()))
+  
+ 
+
+
+```
+
+```{r}
+sbf_df <- read_csv("../data/SBF_Artifacts.csv") |>
+  mutate(Artifact = ifelse(Artifact %in% 
+                             c("segments (<25mm)", "segments (>25mm)"),
+                               "segment",
+                    ifelse(Artifact %in% c("backed bladelets (<25mm)",
+                                           "backed blades (>25mm)",
+                                           "irregular backed (<25mm)",
+                                           "irregular backed (>25mm)",
+                                           "medium backed", "small backed"),
+                           "backed",
+                     ifelse(Artifact %in% c("broken backed (<25mm)"),
+                            "broken backed",
+                     ifelse(Artifact %in% c("large scrapers",
+                                            "medium scrapers",
+                                            "small scrapers"),
+                            "scraper", 
+                     ifelse(Artifact %in% c("misc retouched",
+                                            "retouched blades"),
+                            "MRP",
+                     ifelse(Artifact %in% c("small grinders",
+                                            "grooved stone",
+                                            "nutting grinders",
+                                            "ochre grinders",
+                                            "reamers",
+                                            "stone bowl frags"),
+                            "ground stone",
+                     ifelse(Artifact %in% c("thin points",
+                                            "flat points",
+                                            "bopne flakes",
+                                            "linkshafts",
+                                            "shaft frags",
+                                            "blunt shaft ends",
+                                            "spatulate pieces",
+                                            "notched/snapped",
+                                            "fletched ends"),
+                            "bone tool",
+                      ifelse(Artifact %in% c('bone beads',
+                                             'bone rings',
+                                             'decorated frags', 
+                                             'pendants'),
+                             "symbolic",
+                      ifelse(Artifact %in% c('bone flakes',
+                                             'bone tool',
+                                             'polished frags',
+                                             'striated bone'),
+                             "bone tool",
+                      ifelse(Artifact %in% c('awls',
+                                             'bored stones', 
+                                             'burins',
+                                             'incised palettes',
+                                             'misc', 
+                                             'ochre palette',
+                                             'palettes',
+                                             'spokeshaves',
+                                             'broken OES beads',
+                                             'incomplete broken OES beads',
+                                             'water bottle', 'incised OES',
+                                             'decorated OES', 
+                                             'OES pendants', 
+                                             'miscellaneous',
+                                             'cut bone frags'),
+                             "drop",
+                             Artifact))))))))))) |>
+  pivot_longer(`1`:`5`, values_to = "counts",
+               names_to = "layer") |>
+  
+  group_by(Artifact, layer) |>
+  summarize(total = sum(counts))
+  
+sbf_df <- sbf_df |>
+  mutate(Artifact = ifelse(Artifact == "incomplete OES beads",
+                           "unfinished OES beads",
+                    ifelse(Artifact == "whole OES beads",
+                           "finished OES beads",
+                           Artifact)),
+         
+         total = ifelse(layer == "1", 
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer==1)],
+                 ifelse(layer == "2", 
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer==2)],
+                 ifelse(layer == "3", 
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer==3)],
+                 ifelse(layer == "4a", 
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer=="4a")],
+                 ifelse(layer == "4b", 
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer=="4b")],
+                        total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
+                                                   sbf_df$layer==5)]))))),
+         c = rep("sbf", n()))
+  
+```
+
+# Jubilee Shelter
+
+### Backed Tool Density
+
+```{r}
+artifacts |>
+  bind_rows(sbf_df) |>
+  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
+                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
+                        layer))) |>
+  filter(Artifact == "backed" &
+           !layer %in% c("Pottery", "ELSA")) |>
+    group_by(layer, c) |>
+  summarize(s = sum(total)) |>
+  ungroup() |>
+  ggplot(aes(x = factor(layer), y = s, group = c, fill = c))+
+  geom_bar(stat = "identity", 
+           position = position_dodge2(width = 0.9, preserve = "single")) +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("Density") + xlab("") -> jub_back
+```
+
+### OES
+
+```{r}
+artifacts |>
+  bind_rows(sbf_df) |>
+  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
+                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
+                        layer))) |>
+  filter(Artifact %in% c("unfinished OES beads", "finished OES beads")&
+           !layer %in% c("Pottery", "ELSA")) |>
+  group_by(layer, c, Artifact) |>
+  summarize(s = sum(total)) |>
+  ungroup() |>
+  pivot_wider(names_from = Artifact, values_from = s) |>
+  mutate(ratio = `finished OES beads`/`unfinished OES beads`) |>
+
+  ggplot(aes(x = factor(layer), y = ratio, fill = c))+
+  geom_bar(stat = "identity", 
+           position = position_dodge2(width = 0.9, preserve = "single")) +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("") + xlab("") ->jub_oes
+```
+
+### Bone Tools
+
+```{r}
+artifacts |>
+  bind_rows(sbf_df) |>
+  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
+                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
+                        layer))) |>
+  filter(Artifact == "symbolic"&
+           !layer %in% c("Pottery", "ELSA")) |>
+  group_by(layer, c) |>
+  summarize(s = sum(total)) |>
+  ungroup() |>
+  ggplot(aes(x = factor(layer), y = s, fill = c))+
+  geom_bar(stat = "identity", 
+           position = position_dodge2(width = 0.9, preserve = "single")) +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("") + xlab("") -> jub_bone
+```
+
+```{r}
+png("../results/figures/Figure15.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+  ggarrange(jub_oes, jub_back, jub_bone,
+            nrow = 3, font.label = list(size = 25, face = "bold"),
+  common.legend = TRUE, labels = c("A", "B", "C"),
+  widths = c(1, 1, 1), heights = c(4, 4, 4),
+  label.y = c(1.2, 1.2, 1.2),
+  label.x = c(-0.01, -0.010, -0.010))
+
+dev.off()
+```
+
+# Steenbokfontein Cave
+
+### Backed Tool Density
+
+```{r}
+sbf_df |>
+  filter(Artifact == "backed") |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  ggplot(aes(x = factor(layer), y = total, fill = site))+
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("Density") + xlab("") -> sbf_back
+```
+
+### OES
+
+```{r}
+sbf_df |>
+  filter(Artifact %in% c("unfinished OES beads", "finished OES beads")) |>
+  pivot_wider(names_from = Artifact, values_from = total) |>
+  mutate(ratio = `finished OES beads`/`unfinished OES beads`) |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  ggplot(aes(x = factor(layer), y = ratio, fill = site))+
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("") + xlab("") -> sbf_oes
+```
+
+### Bone Tools
+
+```{r}
+sbf_df |>
+  filter(Artifact == "symbolic") |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  ggplot(aes(x = factor(layer), y = total, fill = site))+
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_minimal() +
+  theme(legend.title = element_blank())+
+  ylab("") + xlab("") -> sbf_bone
+```
+
+```{r}
+png("../results/figures/Figure16.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
+  ggarrange(sbf_oes, sbf_back, sbf_bone,
+            nrow = 3, font.label = list(size = 25, face = "bold"),
+  common.legend = TRUE, labels = c("A", "B", "C"),
+  widths = c(1, 1, 1), heights = c(4, 4, 4),
+  label.y = c(1.2, 1.2, 1.2),
+  label.x = c(-0.01, -0.010, -0.010))
+
+dev.off()
+```
