@@ -88,9 +88,7 @@ df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
   select(-c('X')) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
@@ -359,7 +357,7 @@ scrap_export <- scrap.red |>
          GIUR = RETOUCH) |>
   select(Rem.Weight, Max.thick, Mean.t, GIUR)
 
-#write.csv(scrap_export, "..data/SBF_Scrap_Input.csv")
+write.csv(scrap_export, "../data/SBF_Scrap_Input.csv")
 ```
 
 ```{r}
@@ -749,6 +747,9 @@ slope_group_summary <- slope_group_draws |>
     .groups = "drop"
   )
 
+png("../results/figures/Figure14a.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
 ggplot(slope_group_summary,
        aes(Reduction_s, mean, color = group)) +
   geom_line(linewidth = 1) +
@@ -763,7 +764,7 @@ ggplot(slope_group_summary,
   theme_minimal()+
   guides(fill = "none")
 
-
+dev.off()
 ```
 
 ```{r}
@@ -779,7 +780,7 @@ negative_prob <- slope_group_draws |>
   group_by(group) |>
   summarize(max = max(Reduction_s))
 
-negative_prob
+#negative_prob
 
 # Expected slope for each strat at specified reduction value
 em_slopes_resp <- emtrends(
@@ -792,11 +793,17 @@ em_slopes_resp <- emtrends(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
+
+png("../results/figures/Figure14b.png", width = 290, height = 120,
+    units = "mm", res = 300)
+
 plot(em_slopes_resp)+
   xlab(expression(Delta*"Utility-to-Reduction"))+
   ylab("Ratio")
-pairs(em_slopes_resp)
 
+
+dev.off()
+#pairs(em_slopes_resp)
 
 # Expected Utility for each strat at specified reduction value
 em_slopes_resp <- emmeans(
@@ -809,43 +816,6 @@ em_slopes_resp <- emmeans(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
-plot(em_slopes_resp)
-pairs(em_slopes_resp)
-```
-
-### Surovell's Approach
-
-```{r}
-png("../results/figures/fig19.png", width = 180, height = 120,
-    units = "mm", res = 300)
-
-scrap.red |>
-  group_by(STRAT, RAWMATERIAL) |>
-  filter(RAWMATERIAL %in% c("Quartz", "Silcrete")) |>
-  summarize(Retouch_ave = mean(RETOUCH, na.rm = T),
-            Retouch_sd = sd(RETOUCH, na.rm = T),
-            
-            Utility_ave = mean(UTILITY_small, na.rm = T),
-            Utility_sd = sd(UTILITY_small, na.rm = T)) |>
-  
-  ggplot(aes(x = Retouch_ave, y = Utility_ave, 
-             color = STRAT, label = STRAT))+
-  geom_point(size = 3)+
-  geom_ellipse(aes(x0 = Retouch_ave, y0 = Utility_ave,
-                   a = Retouch_sd, b = Utility_sd,
-                   angle = 0))+
-  facet_grid(~RAWMATERIAL)+
-  geom_text(aes(fontface = 2.5),hjust = -0.2, vjust = -0.5)+
-  
-  
-  xlab("Scraper Retouch Intensity")+ylab("Scraper Utility")+
-  theme_light()+
-  theme(legend.title = element_blank(),
-        text = element_text(size = 17))+
-  guides(color = "none")+
-  scale_colour_manual(values = c("1" = "skyblue", "2" = "skyblue",
-                                 "3" = "skyblue",
-                                 "4a" = "darkmagenta", "4b" = "darkmagenta",
-                                 "5" = "forestgreen"))
-
+#plot(em_slopes_resp)
+#pairs(em_slopes_resp)
 ```

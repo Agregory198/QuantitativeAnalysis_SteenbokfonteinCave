@@ -812,7 +812,7 @@ slope_summary <- slope_draws |>
   )
 
 
-  ggarrange(
+ggarrange(
   core_conard,
   font.label = list(size = 25, face = "bold"),
   widths = c(2, 1), heights = c(1.5, 1),
@@ -820,7 +820,7 @@ slope_summary <- slope_draws |>
   label.x = c(0.05, 0.05)
   )
 
-dev.off()
+
 ggplot(slope_summary, aes(Reduction_s, mean)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = lwr, ymax = upr),
