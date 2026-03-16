@@ -8,9 +8,47 @@ editor: visual
 # Run this to restore the environment
 #install.packages("renv")
 #renv::restore()
+library(ggplot2)
+library(forcats)
+library(ggpubr)
+library(ggridges)
+library(cowplot)
+library(ggforce)
+
+library(infer)
+#library(rcompanion)
+library(purrr)
+#library(rcompanion)
+library(viridis)
+
+library(scales)
+library(stringr)
+
+# To generate tables
+library(gtsummary)
+library(gt)
+library(broom)
+library(broom.mixed)
+
+library(stargazer)
+library(kableExtra)
+
+# To tidy the data
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(forcats)
+library(tidybayes)
+
+# Bayesian models
+library(brms)
+library(emmeans)
+library(loo)
+library(BayesFactor)
+library(posterior)
 ```
 
-```{r ReadData}
+```{r}
 #| message: false
 #| warning: false
 
@@ -211,7 +249,6 @@ sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv")
 ## Raw material distribution
 
 ```{r tab1}
-#| label: tab-one
 
 
 # Create summary table
