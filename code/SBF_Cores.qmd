@@ -4,6 +4,47 @@ format: html
 editor: visual
 ---
 
+```{r}
+library(ggplot2)
+library(forcats)
+library(ggpubr)
+library(ggridges)
+library(cowplot)
+library(ggforce)
+
+library(infer)
+#library(rcompanion)
+library(purrr)
+#library(rcompanion)
+library(viridis)
+
+library(scales)
+library(stringr)
+
+# To generate tables
+library(gtsummary)
+library(gt)
+library(broom)
+library(broom.mixed)
+
+library(stargazer)
+library(kableExtra)
+
+# To tidy the data
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(forcats)
+library(tidybayes)
+
+# Bayesian models
+library(brms)
+library(emmeans)
+library(loo)
+library(BayesFactor)
+library(posterior)
+```
+
 ```{r ReadData}
 #| message: false
 #| warning: false
@@ -538,7 +579,7 @@ df.flakes |>
   arrange(STRAT_mod, RAWMATERIAL) -> flake.vr
 
 flake.vr |>
-  left_join(df.cores) |>
+  left_join(df_cores) |>
   select(m_plat, m_thick,
          STRAT_mod, STRAT_modn,
          RAWMATERIAL, MAXLENGTH, MAXWIDTH, MAXTHICKNESS,
@@ -910,144 +951,4 @@ em_slopes_resp <- emmeans(
 )
 #plot(em_slopes_resp)
 #pairs(em_slopes_resp)
-```
-
-```{r}
-# This shows that, regardless of estimated cultural practice, the major effect on utility is the degree of coastal exploitation
-newdata <- expand.grid(
-  VR_s = seq(min(Bayes_ut1$VR_s), max(Bayes_ut1$VR_s), length.out = 200),
-  STRAT_mod = c(as.numeric(unique(df$STRAT_mod))),
-  RAWMATERIAL = unique(df$RAWMATERIAL)
-) |>
-  mutate(RAWMATERIAL = droplevels(RAWMATERIAL))
-
-epreds <- add_epred_draws(bayes_poly2, newdata = newdata, ndraws = 1000,
-                          allow_new_levels = TRUE)
-
-
-
-epreds |>
-  filter(.epred < 100) |>
-  group_by(VR_s, RAWMATERIAL, STRAT_mod) |>
-  median_qi(.epred, .width = 0.90) |>
-
-ggplot(aes(x = VR_s, y = .epred, color = factor(STRAT_mod, ordered = TRUE),
-           fill = factor(STRAT_mod, ordered = TRUE))) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha = 0.2, color = NA) +
-  facet_wrap(~ RAWMATERIAL, scales = "free") +
-  scale_color_viridis_d() +
-  scale_fill_viridis_d() +
-  labs(
-    x = "Reduction (standardized)",
-    y = "Expected Utility",
-    color = "",
-    fill = ""
-  ) + theme_minimal()+xlim(-2, 3.5)+
-  theme(text = element_text(size= 20),
-        legend.position = "none") +
-  xlim(-1, 2)
-
-
-```
-
-```{r}
-post_draws <- spread_draws(
-  bayes_poly2,
-  `b_Intercept`,
-  `b_polyVR_s2rawEQTRUE1`, `b_polyVR_s2rawEQTRUE2`,
-  
-  `r_STRAT_mod`[Ratio,],
-  `r_STRAT_mod:RAWMATERIAL`[Ratio_Raw,]
-
-  ) |>
-  
-  mutate(b0 = `b_Intercept`,
-         bx = `b_polyVR_s2rawEQTRUE1`,
-         bx2 = `b_polyVR_s2rawEQTRUE2`,
-         
-         b1 = bx + `r_STRAT_mod` + `r_STRAT_mod:RAWMATERIAL`,
-         b2 = bx2 + `r_STRAT_mod` + `r_STRAT_mod:RAWMATERIAL`,
-         
-         slope = b1 + (2 * b2),
-         
-         critical_pt = -1 * ((b1)/(2 * (b2))))
-
-
-post_draws |>
-  group_by(Ratio) |>
-  median_qi(slope, .width = c(.5, .9)) |>
-  
-  ggplot(aes(y = factor(Ratio, ordered = TRUE), x = slope, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval() +
-  labs(
-    x = "Posterior estimate of a",
-    y = "STRAT:RAWMATERIAL",
-    title = "Hierarchical posterior estimates of amplitude (a)"
-  ) +
-  theme_minimal()
-
-
-post_draws |>
-  group_by(Ratio_Raw) |>
-  median_qi(slope, .width = c(.5, .9)) |>
-  
-  ggplot(aes(y = factor(Ratio_Raw, ordered = TRUE), x = slope, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval() +
-  labs(
-    x = "Posterior Slope Estimate",
-    y = ""
-  ) +
-  theme_minimal()
-
-
-```
-
-```{r}
-new_seq <- seq(min(Bayes_ut1$VR_s),
-               max(Bayes_ut1$VR_s),
-               length.out = 25)
-
-post_draws |>
-  mutate(draw = row_number()) |>
-  
-  tidyr::crossing(Reduction_s = new_seq) |>
-  
-  mutate(
-    
-    slope_x = b1 + ((2 * b2) * Reduction_s)
-  
-  ) |>
-  filter(Reduction_s < 2, Reduction_s > 0) |>
-  group_by(Ratio_Raw) |>
-  
-  median_qi(slope_x, .width = c(0.5,0.9)) |>
-  mutate(Ratio_Raw = as.factor(Ratio_Raw)) |>
-  
-  ggplot(aes(x = slope_x, y = Ratio_Raw)) +
-    geom_pointinterval(aes(xmin = .lower, xmax = .upper)) +
-    labs(
-      x = "Median Slope Values",
-      y = ""
-    ) 
-    theme_minimal() +
-  scale_y_discrete(labels = c("Quartz", "Quartzite", "Silcrete"))+
-  theme(text = element_text(size= 20),
-        legend.position = "none")
-
-  
-  
-post_draws |>
-  mutate(draw = row_number()) |>
-  
-  tidyr::crossing(Reduction_s = new_seq) |>
-  
-  mutate(
-    
-    slope_x = b1 + ((2 * b2) * Reduction_s)
-  
-  ) |>
-  filter(Reduction_s < 1, Reduction_s > -1) |>
-  group_by(Raw) |>
-  summarize(mean = mean(slope_x > 0))
 ```
