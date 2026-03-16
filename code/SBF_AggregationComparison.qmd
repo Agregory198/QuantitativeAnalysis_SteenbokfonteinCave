@@ -305,11 +305,11 @@ artifacts |>
 ```
 
 ```{r}
-png("../results/figures/Figure15.png", width = 290, height = 120,
+png("../results/figures/Figure15.png", width = 220, height = 120,
     units = "mm", res = 300)
 
   ggarrange(jub_oes, jub_back, jub_bone,
-            nrow = 3, font.label = list(size = 25, face = "bold"),
+            nrow = 3, font.label = list(size = 18, face = "bold"),
   common.legend = TRUE, labels = c("A", "B", "C"),
   widths = c(1, 1, 1), heights = c(4, 4, 4),
   label.y = c(1.2, 1.2, 1.2),
@@ -365,11 +365,11 @@ sbf_df |>
 ```
 
 ```{r}
-png("../results/figures/Figure16.png", width = 290, height = 120,
+png("../results/figures/Figure16.png", width = 220, height = 120,
     units = "mm", res = 300)
 
   ggarrange(sbf_oes, sbf_back, sbf_bone,
-            nrow = 3, font.label = list(size = 25, face = "bold"),
+            nrow = 3, font.label = list(size = 18, face = "bold"),
   common.legend = TRUE, labels = c("A", "B", "C"),
   widths = c(1, 1, 1), heights = c(4, 4, 4),
   label.y = c(1.2, 1.2, 1.2),
