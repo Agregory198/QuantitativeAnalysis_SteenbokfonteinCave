@@ -1,37 +1,37 @@
 # data
 This folder contains all data required to reproduce this study. Below I describe the folder contents:
 
-- AG_Summer2024_SBF_Final.csv
-/nMain file containing the stone tool data collected during 2024.
+- _AG_Summer2024_SBF_Final.csv_:
+- Main file containing the stone tool data collected during 2024.
 
-- AG_Summer2025_SBF_Final.csv
-Main file containing the stone tool data collected during 2025.
+- _AG_Summer2025_SBF_Final.csv_:
+- Main file containing the stone tool data collected during 2025.
 
-- DataSheet1.csv
+- _DataSheet1.csv_:
 Main file containing the stone tool data collected by a research participant during summer 2025.
 
-- DataSheet2.csv
+- _DataSheet2.csv_:
 Main file containing the stone tool data collected by a research participant during summer 2025.
 
 
-- SBF_Scrap_Input.csv
+- _SBF_Scrap_Input.csv_:
 A file exported from the 'SBF_Scraper.qmd' with the information required to predict the retouch intensity from the R shiny app: 
 **link**
 
-- SBF_Scrap_Pred.csv
+- _SBF_Scrap_Pred.csv_:
 A file obtained from running the SBF_Scr4ap_Input.csv into the R shiny app **link** and contains the predicted scraper retouch intensity.
 
-- SBF_ToolType.csv
+- _SBF_ToolType.csv_:
 Contains a tabulated list of all modified tools recorded from Steenbokfontein Cave.
 
-- SBF_ToolType_unmod.csv
+- _SBF_ToolType_unmod.csv_:
 Contains a tabulated list of all unmodified tools recorded from Steenbokfontein Cave.
 
-- SBF_Artifacts.csv
+- _SBF_Artifacts.csv_:
 Contains all primary artifacts including stone and non-stone artifacts separated by layer from Steenbokfontein Cave, which matches the artifact types from the 'Artifacts.xlsx'.
 
-- bone_artifacts.csv
+- _bone_artifacts.csv_:
 Contains tabulated data of bone artifacts from Jubilee Shelter.
 
-- Artifacts.xlsx
+- _Artifacts.xlsx_:
 Contains tabulated data of shell and stone tool artifacts from Jubilee Shelter.
