@@ -2,7 +2,7 @@
 This project aims to evaluate the effect that increasing coastal resource use had on hunter-gatherer technological and social strategies at Steenbokfontein Cave in South Africa 4,000 years ago (4 ka). For most of human history, people have aggregated around lakes, rivers, and coasts. Aquatic environments provide humans access to dense, predictable, and defensible resources such as fish and shellfish. Aquatic resource abundance has determined the permanence of these settlements. Seasonal aggregation would have allowed hunter-gatherers from far and wide to temporarily share knowledge, resources, technology, and build social relationships. Permanent aggregation around dense and reliable aquatic resources would have provided an opportunity to develop specialized technologies and practice coordinated resource sharing and distribution, which are key features that define “complex hunter-gatherers.” Therefore, aquatic resources plausibly served as a lynchpin in the development of key evolutionary traits in hunter-gatherers, most notably reduced mobility, surplus accumulation and sharing, and technological innovation; yet surprisingly few studies have directly evaluated how aquatic resources structured hunter-gatherer mobility patterns and technological strategies.
 
 
-## Folder Structure
+## Folder structure
 
 - `data/`: contains input data for all R quarto documents
 - `code/`: all analysis scripts required to re-run the project provided as quarto documents
