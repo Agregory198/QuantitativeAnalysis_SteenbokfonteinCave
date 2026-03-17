@@ -49,7 +49,7 @@ There are no visible trends in how hunter-gatherers managed scraper utility and 
 ![Figure5](results/figures/Figure14a.png)
 
 ## Conclusion
-There are some stone tool trends that match our hypothesis, but the vast majority contradict our expectations. This conclusion implies that archaeologists need to think carefully about which stone tool patterns they expect to find as hunter-gatherers aggregate along coastal resources. There does not seem to be a one-fits-all pattern of hunter-gatherer technological adaptations. Instead, there are selective shifts in technology that are driven by a combination of social strategies and task-specific needs, exemplifying a broad spectrum of hunter-gatherer behaviors.
+There are some stone tool trends that match my hypothesis, but the vast majority contradict my expectations. This conclusion implies that archaeologists need to think carefully about which stone tool patterns they expect to find as hunter-gatherers aggregate along coastal resources. There does not seem to be a one-fits-all pattern of hunter-gatherer technological adaptations. Instead, there are selective shifts in technology that are driven by a combination of social strategies and task-specific needs, exemplifying a broad spectrum of hunter-gatherer behaviors.
 
 ## Tools Used
 - 'R'
