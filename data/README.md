@@ -2,7 +2,7 @@
 This folder contains all data required to reproduce this study. Below I describe the folder contents:
 
 - AG_Summer2024_SBF_Final.csv
-Main file containing the stone tool data collected during 2024.
+/nMain file containing the stone tool data collected during 2024.
 
 - AG_Summer2025_SBF_Final.csv
 Main file containing the stone tool data collected during 2025.
