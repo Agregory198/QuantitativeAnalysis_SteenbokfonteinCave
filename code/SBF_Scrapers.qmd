@@ -11,6 +11,7 @@ library(ggpubr)
 library(ggridges)
 library(cowplot)
 library(ggforce)
+library(here)
 
 library(infer)
 #library(rcompanion)
@@ -78,8 +79,9 @@ scraper_red <- function(L, D, a, b){
 ```{r ReadData}
 #| message: false
 #| warning: false
+
 # Read and clean data
-df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
+df_sum24 <- read.csv(here::here("data", "AG_Summer2024_SBF_Final.csv")) |>
   select(-c('X')) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
@@ -88,12 +90,10 @@ df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
 
-df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
+df_sum25 <- read.csv(here::here("data", "AG_Summer2025_SBF_Final.csv")) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod)) |>
@@ -101,7 +101,7 @@ df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
   select(-c(X))
 
 # student's dataframe
-df_One <- read_csv("../data/DataSheet_1.csv")|>
+df_One <- read_csv(here::here("data", "DataSheet_1.csv"))|>
   mutate(STRAT = tolower(Layer),
          
          PLATFORMWIDTH = parse_number("Platform Width"),
@@ -145,7 +145,7 @@ df_One_flakes <- df_One |>
   
 
 # student's Dataframe
-df_Two <- read_csv("../data/DataSheet_2.csv") |>
+df_Two <- read_csv(here::here("data", "DataSheet_2.csv")) |>
   
   rename(SITE = Site, STRAT = Layer, UNIT = Unit, NAMED_ID = `Other Name`,
          RAWMATERIAL = `Raw Material`, CORTEX = `Cortex Percent`,
@@ -165,10 +165,7 @@ df_Two_flakes <- df_Two |>
   
   add_column(OTHERUNIT = NA, .before = "RAWMATERIAL") |>
   
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #          ifelse(STRAT == "3b", "3", 
-           #                ifelse(STRAT == "5a", "5", STRAT))),
-          STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
@@ -228,6 +225,7 @@ df <- rbind(df_sum24, df_sum25) |>
          MASS < 300)
 
 
+
 # take average core flake scar length
 df |>
   dplyr::filter(ARTIFACTCLASS=="Core") |>
@@ -240,8 +238,6 @@ df |>
 small <- 5.18
 
 
-
-
 # Subset data by flakes and flake variables
 core_bind <- full_join(core_size, df) |>
   filter(ARTIFACTCLASS == "Flake" & COMPLETENESS == "Complete") |>
@@ -251,8 +247,7 @@ core_bind <- full_join(core_size, df) |>
          Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3),
          
          Reduction = TECHLENGTH/Ave_FlakeLength) |>
-  
-  select(any_of(names(df_students)), c(Utility_small:Reduction), STRAT_mod, STRAT_modn) -> df.flakes
+  select(any_of(names(df_students))) -> df.flakes
 
 # Subset data by cores and core variables
 df.cores <- df |>
@@ -268,41 +263,11 @@ df.retouch <- df |>
            COMPLETENESS == "Complete") |>
   mutate(Utility_small = TECHLENGTH*(TECHLENGTH - small),
          
-         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3)) |>
-  select(1:11,21:27,29:60, Utility_small:Transport_small)
+         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3))
 
 # Read tabulated data from previous publications (i.e. Jerardino & Yates)
-sbf_df <- read.csv("../data/SBF_ToolType.csv") |>
-  filter(Layer != "3b") |>
-  mutate(STRAT_mod = ifelse(Layer == "1", 27.2,
-                     ifelse(Layer == "2", 37.1,
-                     ifelse(Layer == "3a", 49.8,
-                     ifelse(Layer == "4a", 26.6,
-                     ifelse(Layer == "4b", 25.5,
-                     ifelse(Layer == "5", 8.4, 0)))))),
-         
-         STRAT_modn = ifelse(Layer %in% c("5"),"Pre-Megamidden",
-                     ifelse(Layer %in% c("4a", "4b"), "Transitional", 
-                            "Megamidden")),
-         STRAT_modn = fct_relevel(STRAT_modn, 
-                                  c("Pre-Megamidden", "Transitional",
-                                    "Megamidden")))
-
-sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv") |>
-  filter(Layer != "3b") |>
-  mutate(STRAT_mod = ifelse(Layer == "1", 27.2,
-                     ifelse(Layer == "2", 37.1,
-                     ifelse(Layer == "3a", 49.8,
-                     ifelse(Layer == "4a", 26.6,
-                     ifelse(Layer == "4b", 25.5,
-                     ifelse(Layer == "5", 8.4, 0)))))),
-         
-         STRAT_modn = ifelse(Layer %in% c("5"),"Pre-Megamidden",
-                     ifelse(Layer %in% c("4a", "4b"), "Transitional", 
-                            "Megamidden")),
-         STRAT_modn = fct_relevel(STRAT_modn, 
-                                  c("Pre-Megamidden", "Transitional",
-                                    "Megamidden")))
+sbf_df <- read.csv(here::here("data", "SBF_ToolType.csv"))
+sbf_un <- read.csv(here::here("data", "SBF_ToolType_unmod.csv"))
 ```
 
 ## Scraper Utility to Retouch
@@ -352,11 +317,11 @@ scrap_export <- scrap.red |>
          GIUR = RETOUCH) |>
   select(Rem.Weight, Max.thick, Mean.t, GIUR)
 
-write.csv(scrap_export, "../data/SBF_Scrap_Input.csv")
+write.csv(scrap_export, here::here("data", "SBF_Scrap_Input.csv"))
 ```
 
 ```{r}
-scrap_pred <- read_csv("../data/SBF_Scrap_Pred.csv") |>
+scrap_pred <- read_csv(here::here("data", "SBF_Scrap_Pred.csv")) |>
   select(`Percent.Consumed`) |>
   mutate(UTILITY_small = scrap.red$Utility_small,
          STRAT_mod = scrap.red$STRAT_mod,
@@ -742,7 +707,7 @@ slope_group_summary <- slope_group_draws |>
     .groups = "drop"
   )
 
-png("../results/figures/Figure14a.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure14a.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 ggplot(slope_group_summary,
@@ -789,7 +754,7 @@ em_slopes_resp <- emtrends(
   re_formula = NULL
 )
 
-png("../results/figures/Figure14b.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure14b.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 plot(em_slopes_resp)+

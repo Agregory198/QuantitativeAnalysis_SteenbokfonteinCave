@@ -11,6 +11,7 @@ library(ggpubr)
 library(ggridges)
 library(cowplot)
 library(ggforce)
+library(here)
 
 library(infer)
 #library(rcompanion)
@@ -50,23 +51,19 @@ library(posterior)
 #| warning: false
 
 # Read and clean data
-df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
+df_sum24 <- read.csv(here::here("data", "AG_Summer2024_SBF_Final.csv")) |>
   select(-c('X')) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
 
-df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
+df_sum25 <- read.csv(here::here("data", "AG_Summer2025_SBF_Final.csv")) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod)) |>
@@ -74,7 +71,7 @@ df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
   select(-c(X))
 
 # student's dataframe
-df_One <- read_csv("../data/DataSheet_1.csv")|>
+df_One <- read_csv(here::here("data", "DataSheet_1.csv"))|>
   mutate(STRAT = tolower(Layer),
          
          PLATFORMWIDTH = parse_number("Platform Width"),
@@ -118,7 +115,7 @@ df_One_flakes <- df_One |>
   
 
 # student's Dataframe
-df_Two <- read_csv("../data/DataSheet_2.csv") |>
+df_Two <- read_csv(here::here("data", "DataSheet_2.csv")) |>
   
   rename(SITE = Site, STRAT = Layer, UNIT = Unit, NAMED_ID = `Other Name`,
          RAWMATERIAL = `Raw Material`, CORTEX = `Cortex Percent`,
@@ -138,10 +135,7 @@ df_Two_flakes <- df_Two |>
   
   add_column(OTHERUNIT = NA, .before = "RAWMATERIAL") |>
   
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #          ifelse(STRAT == "3b", "3", 
-           #                ifelse(STRAT == "5a", "5", STRAT))),
-          STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
@@ -201,6 +195,7 @@ df <- rbind(df_sum24, df_sum25) |>
          MASS < 300)
 
 
+
 # take average core flake scar length
 df |>
   dplyr::filter(ARTIFACTCLASS=="Core") |>
@@ -209,8 +204,8 @@ df |>
 
 
 # set values for small, medium, and large slug effect sizes
-small <- 5.18
 
+small <- 5.18
 
 
 # Subset data by flakes and flake variables
@@ -222,11 +217,10 @@ core_bind <- full_join(core_size, df) |>
          Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3),
          
          Reduction = TECHLENGTH/Ave_FlakeLength) |>
-  
-  select(any_of(names(df_students)), c(Utility_small:Reduction), STRAT_mod, STRAT_modn) -> df.flakes
+  select(any_of(names(df_students))) -> df.flakes
 
 # Subset data by cores and core variables
-df_cores <- df |>
+df.cores <- df |>
   filter(ARTIFACTCLASS == "Core" & CORECOMPLETENESS == "Complete") |>
   mutate(SA_Ellipse = (4*pi)*
            ((((((MAXLENGTH/2)*(MAXWIDTH/2))^1.6075)+
@@ -234,18 +228,16 @@ df_cores <- df |>
            (((MAXWIDTH/2)+(MAXTHICKNESS/2))^1.6075))/3)^(1/1.6075)))
 
 # Subset data by retouch and retouch variables
-df_retouch <- df |>
+df.retouch <- df |>
   filter(ARTIFACTCLASS == "RetouchedTool" & RAWMATERIAL != "BWA UPPER 1" &
            COMPLETENESS == "Complete") |>
   mutate(Utility_small = TECHLENGTH*(TECHLENGTH - small),
          
-         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3)) |>
-  select(1:11,21:27,29:60, Utility_small:Transport_small)
+         Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3))
 
 # Read tabulated data from previous publications (i.e. Jerardino & Yates)
-sbf_df <- read.csv("../data/SBF_ToolType.csv")
-sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv")
-
+sbf_df <- read.csv(here::here("data", "SBF_ToolType.csv"))
+sbf_un <- read.csv(here::here("data", "SBF_ToolType_unmod.csv"))
 ```
 
 ## Core Descriptions
@@ -275,7 +267,7 @@ df_cores |>
           element_text(angle = 45, hjust = 1)) -> core_conard
 
 
-png("../results/figures/Figure9.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure9.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
   ggarrange(
@@ -550,7 +542,7 @@ fit_CE_anova |>
 ```
 
 ```{r}
-png("../results/figures/Figure10.png", width = 290, height = 220,
+png(here::here("results/figures", "Figure10.png"), width = 290, height = 220,
     units = "mm", res = 300)
 
 
@@ -880,7 +872,7 @@ slope_group_summary <- slope_group_draws |>
     .groups = "drop"
   )
 
-png("../results/figures/Figure13a.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure13a.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 
@@ -927,7 +919,7 @@ em_slopes_resp <- emtrends(
   allow_new_levels = TRUE,
   re_formula = NULL
 )
-png("../results/figures/Figure13b.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure13b.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 plot(em_slopes_resp)+

@@ -14,6 +14,7 @@ library(ggpubr)
 library(ggridges)
 library(cowplot)
 library(ggforce)
+library(here)
 
 library(infer)
 #library(rcompanion)
@@ -53,23 +54,19 @@ library(posterior)
 #| warning: false
 
 # Read and clean data
-df_sum24 <- read.csv("../data/AG_Summer2024_SBF_Final.csv") |>
+df_sum24 <- read.csv(here::here("data", "AG_Summer2024_SBF_Final.csv")) |>
   select(-c('X')) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"), "Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod))
 
-df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
+df_sum25 <- read.csv(here::here("data", "AG_Summer2025_SBF_Final.csv")) |>
   filter(RAWMATERIAL != "BWA UPPER 1" &
            RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  mutate(#STRAT = ifelse(STRAT == "3a", "3", # combine strat 3a and 3b
-          #              ifelse(STRAT == "3b", "3", STRAT)),
-         STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
+  mutate(STRAT_mod = ifelse(STRAT %in% c("5"),"Terrestrial",
                      ifelse(STRAT %in% c("4a", "4b"), "Mixed", "Coastal"))) |>
   mutate(STRAT = factor(STRAT),
          STRAT_mod = factor(STRAT_mod)) |>
@@ -77,7 +74,7 @@ df_sum25 <- read.csv("../data/AG_Summer2025_SBF_Final.csv") |>
   select(-c(X))
 
 # student's dataframe
-df_One <- read_csv("../data/DataSheet_1.csv")|>
+df_One <- read_csv(here::here("data", "DataSheet_1.csv"))|>
   mutate(STRAT = tolower(Layer),
          
          PLATFORMWIDTH = parse_number("Platform Width"),
@@ -121,7 +118,7 @@ df_One_flakes <- df_One |>
   
 
 # student's Dataframe
-df_Two <- read_csv("../data/DataSheet_2.csv") |>
+df_Two <- read_csv(here::here("data", "DataSheet_2.csv")) |>
   
   rename(SITE = Site, STRAT = Layer, UNIT = Unit, NAMED_ID = `Other Name`,
          RAWMATERIAL = `Raw Material`, CORTEX = `Cortex Percent`,
@@ -242,8 +239,8 @@ df.retouch <- df |>
          Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3))
 
 # Read tabulated data from previous publications (i.e. Jerardino & Yates)
-sbf_df <- read.csv("../data/SBF_ToolType.csv")
-sbf_un <- read.csv("../data/SBF_ToolType_unmod.csv")
+sbf_df <- read.csv(here::here("data", "SBF_ToolType.csv"))
+sbf_un <- read.csv(here::here("data", "SBF_ToolType_unmod.csv"))
 ```
 
 ## Raw material distribution
@@ -301,7 +298,7 @@ df |>
 ```
 
 ```{r}
-png("../results/figures/Figure4.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure4.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -435,7 +432,7 @@ df |>
 
 ```{r fig-Figure5}
 
-png("../results/figures/Figure5.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure5.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -707,7 +704,7 @@ rm(df_cortex_boot)
 ```
 
 ```{r fig-Figure6}
-png("../results/figures/Figure6.png", width = 290, height = 120,
+png(here::here("results/figures", "Figure6.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
@@ -886,7 +883,7 @@ mean(posterior$b_STRAT_mod_s+posterior$`b_STRAT_mod_s:RAWMATERIALSilcrete` > 0)
 ```
 
 ```{r}
-png("../results/figures/Figure11.png", width = 290, height = 220,
+png(here::here("results/figures", "Figure11.png"), width = 290, height = 220,
     units = "mm", res = 300)
 
 ggarrange(
@@ -1026,7 +1023,7 @@ hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALSilcrete > ",
 ```
 
 ```{r}
-png("../results/figures/supp1.png", width = 290, height = 120,
+png(here::here("results/figures", "supp1.png"), width = 290, height = 120,
     units = "mm", res = 300)
 
 ggarrange(
