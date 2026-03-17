@@ -235,7 +235,7 @@ sbf_df <- sbf_df |>
 
 # Jubilee Shelter
 
-### Backed Tool Density
+### Curated Tool Density
 
 ```{r}
 artifacts |>
@@ -243,7 +243,7 @@ artifacts |>
   mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
                  ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
                         layer))) |>
-  filter(Artifact == "backed" &
+  filter(Artifact %in% c("backed", "points", "segment", "adze") &
            !layer %in% c("Pottery", "ELSA")) |>
     group_by(layer, c) |>
   summarize(s = sum(total)) |>
@@ -324,7 +324,7 @@ dev.off()
 
 ```{r}
 sbf_df |>
-  filter(Artifact == "backed") |>
+  filter(Artifact %in% c("backed", "points", "segment", "adze")) |>
   mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
   ggplot(aes(x = factor(layer), y = total, fill = site))+
   geom_bar(stat = "identity") +
