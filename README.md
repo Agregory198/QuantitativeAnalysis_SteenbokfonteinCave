@@ -9,7 +9,7 @@ This project aims to evaluate the effect that increasing coastal resource use ha
 - `results/`: figures, tables, and other output files produced inside and outside R
 
 ## Instructions to reproduce this study
-To reproduce this study, please pull this repository into a new R project and restore the environment vai _renv::restore()_ install _renv_ if not installed already. This will load the package versions used during this study. You can then render each of the files in the _'code'_ folder. This will run the script and export the figures according to this repository's folder structure (_'/results/figures'_). The images are already provided in _'results/figures'_ directory. The quarto documents will also pull the data in according to this repository's folder structure (_'/data'_), which take the form of comma-separated-values and one xlsx file with multiple saved sheats.
+To reproduce this study, please pull this repository into a new R project and restore the environment via _renv::restore()_ install _renv_ if not installed already. This will load the package versions used during this study. You can then render each of the files in the _'code'_ folder. This will run the script and export the figures according to this repository's folder structure (_'/results/figures'_). The images are already provided in _'results/figures'_ directory. The quarto documents will also pull the data in according to this repository's folder structure (_'/data'_), which take the form of comma-separated-values and one xlsx file with multiple saved sheats.
 
 
 ## Overview
