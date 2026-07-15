@@ -207,7 +207,6 @@ df |>
 
 
 # set values for small, medium, and large slug effect sizes
-
 small <- 5.18
 
 
@@ -332,8 +331,8 @@ my_prior <-
   prior(normal(0, 1.5), class = "Intercept", dpar = "mu2") +
   prior(normal(0, 1.5), class = "Intercept", dpar = "mu3") +
   
-  prior(normal(0, 1), class = "b", dpar = "mu2") +     
-  prior(normal(0, 1), class = "b", dpar = "mu3") +
+  prior(normal(0.5, 1), class = "b", dpar = "mu2") +     
+  prior(normal(-0.5, 1), class = "b", dpar = "mu3") +
   prior(exponential(1), class = "phi")  
 
 bayes_dm00 <- brm(
@@ -404,6 +403,30 @@ silcrete_matrix = matrix(result00[seq(3,length(result00),3)],
 quartz_matrix
 quartzite_matrix
 silcrete_matrix
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(quartz_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(quartz_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Quartz Probability Matrix<br>P(Quartz Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(quartzite_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(quartzite_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Quartzite Probability Matrix<br>P(Quartzite Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(silcrete_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(silcrete_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Silcrete Probability Matrix<br>P(Silcrete Proportions Change)"))
 ```
 
 ```{r RMGGplot}
@@ -476,10 +499,16 @@ dir <- df |>
 
 my_prior <- 
   prior(normal(0.5, 1), class = "Intercept", dpar = "mu2") +
-  prior(normal(0.3, 1), class = "Intercept", dpar = "mu3") +
+  prior(normal(-0.5, 1), class = "Intercept", dpar = "mu3") +
   
-  prior(normal(0.5, 0.5), class = "b", dpar = "mu2") +
-  prior(normal(0.5, 0.5), class = "b", dpar = "mu3") +
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod", dpar = "mu2") +
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod", dpar = "mu3") +
+  
+  prior(normal(0.5, 1), class = "b", coef = "RAWMATERIALQuartzite", dpar = "mu2") +
+  prior(normal(0.5, 1), class = "b", coef = "RAWMATERIALQuartzite", dpar = "mu3") +
+  
+  prior(normal(-0.5, 1), class = "b", coef = "RAWMATERIALSilcrete", dpar = "mu2") +
+  prior(normal(-0.5, 1), class = "b", coef = "RAWMATERIALSilcrete", dpar = "mu3") +
   
   prior(exponential(1), class = "phi")  
 
@@ -552,9 +581,32 @@ Quartz_RetouchedTool_matrix <- result2 |> as.tibble() |>
          dimnames = list(c(names$STRAT_mod),
                          c(names$STRAT_mod)))
 
-Quartz_core_matrix
-Quartz_flake_matrix
-Quartz_RetouchedTool_matrix
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartz_core_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartz_core_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Cores - Quartz Probability Matrix<br>P(Quartz Core Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartz_flake_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartz_flake_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Flakes - Quartz Probability Matrix<br>P(Quartz Flake Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartz_RetouchedTool_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartz_RetouchedTool_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Formal Tools - Quartz Probability Matrix<br>P(Quartz Formal Tool Proportions Change)"))
+
+
+
 
 # Quartzite results
 Quartzite_core_matrix <- result2 |> as.tibble() |> 
@@ -579,9 +631,29 @@ Quartzite_RetouchedTool_matrix <- result2 |> as.tibble() |>
                          c(names$STRAT_mod)))
 
 
-Quartzite_core_matrix
-Quartzite_flake_matrix
-Quartzite_RetouchedTool_matrix
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartzite_core_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartzite_core_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Cores - Quartzite Probability Matrix<br>P(Quartzite Core Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartzite_flake_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartzite_flake_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Flakes - Quartzite Probability Matrix<br>P(Quartzite Flake Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Quartzite_RetouchedTool_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Quartzite_RetouchedTool_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Formal Tools - Quartzite Probability Matrix<br>P(Quartz Formal Tool Proportions Change)"))
 
 # Silcrete results
 Silcrete_core_matrix <- result2 |> as.tibble() |> 
@@ -605,9 +677,29 @@ Silcrete_RetouchedTool_matrix <- result2 |> as.tibble() |>
          dimnames = list(c(names$STRAT_mod),
                          c(names$STRAT_mod)))
 
-Silcrete_core_matrix
-Silcrete_flake_matrix
-Silcrete_RetouchedTool_matrix
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Silcrete_core_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Silcrete_core_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Cores - Silcrete Probability Matrix<br>P(Silcrete Core Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Silcrete_flake_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Silcrete_flake_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Flakes - Silcrete Probability Matrix<br>P(Silcrete Flake Proportions Change)"))
+
+# Convert matrix to data frame first, keeping row names
+tmp_df <- as.data.frame(Silcrete_RetouchedTool_matrix)
+tmp_df$`Fish-to-NonFish` <- rownames(Silcrete_RetouchedTool_matrix)
+tmp_df <- tmp_df[, c("Fish-to-NonFish", "8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")] # Reorder
+tmp_df %>% 
+  gt() %>% 
+  tab_header(title = html("Formal Tools - Silcrete Probability Matrix<br>P(Silcrete Formal Tool Proportions Change)"))
 ```
 
 ```{r CortexGGplot}
@@ -975,50 +1067,120 @@ posterior <- as_draws(fit_mass_all_phase)$`1` # get posterior draws
 # Test hypothesis that slopes greater than median
 
 hypothesis(fit_mass_all_phase, paste0("Intercept > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50))) -> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50))) -> q_tmp2
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp3
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp4
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp5
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp6
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8 > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp7
+
+tibble(RawMaterial = rep("Quartz", 7*length(q_tmp1$samples$H1)),
+       Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
+                 rep("25.5", length(q_tmp1$samples$H1)),
+                 rep("26.6", length(q_tmp1$samples$H1)),
+                 rep("27.2", length(q_tmp1$samples$H1)),
+                 rep("29.6", length(q_tmp1$samples$H1)),
+                 rep("37.1", length(q_tmp1$samples$H1)),
+                 rep("49.8", length(q_tmp1$samples$H1))),
+       Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
+                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
+  
+  mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
+    ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  geom_vline(xintercept = 0, lty = 2, color = "red")+
+  theme_minimal() +
+  labs(
+    title = "Quartz Posterior Estimates",
+    x = "Posterior Samples",
+    y = "Fish-to-Non Fish Ratios"
+  ) +
+  theme(legend.position = "none")
+  
 
 hypothesis(fit_mass_all_phase, paste0("RAWMATERIALQuartzite > ",
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp2
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp3
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp4
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp5
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp6
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALQuartzite > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp7
+
+tibble(RawMaterial = rep("Quartzite", 7*length(q_tmp1$samples$H1)),
+       Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
+                 rep("25.5", length(q_tmp1$samples$H1)),
+                 rep("26.6", length(q_tmp1$samples$H1)),
+                 rep("27.2", length(q_tmp1$samples$H1)),
+                 rep("29.6", length(q_tmp1$samples$H1)),
+                 rep("37.1", length(q_tmp1$samples$H1)),
+                 rep("49.8", length(q_tmp1$samples$H1))),
+       Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
+                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
+  mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
+    ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  geom_vline(xintercept = 0, lty = 2, color = "red")+
+  theme_minimal() +
+  labs(
+    title = "Quartzite Posterior Estimates",
+    x = "Posterior Samples",
+    y = "Fish-to-Non Fish Ratios"
+  ) +
+  theme(legend.position = "none")
+
+
 
 hypothesis(fit_mass_all_phase, paste0("RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod25.5:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod26.6:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod27.2:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod29.6:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALSilcrete > ", 
-                                      mean(df_mod$Median_mid50)))
+                                      mean(df_mod$Median_mid50)))-> q_tmp1
 
+
+tibble(RawMaterial = rep("Silcrete", 7*length(q_tmp1$samples$H1)),
+       Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
+                 rep("25.5", length(q_tmp1$samples$H1)),
+                 rep("26.6", length(q_tmp1$samples$H1)),
+                 rep("27.2", length(q_tmp1$samples$H1)),
+                 rep("29.6", length(q_tmp1$samples$H1)),
+                 rep("37.1", length(q_tmp1$samples$H1)),
+                 rep("49.8", length(q_tmp1$samples$H1))),
+       Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
+                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
+  mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
+    ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  geom_vline(xintercept = 0, lty = 2, color = "red")+
+  theme_minimal() +
+  labs(
+    title = "Silcrete Posterior Estimates",
+    x = "Posterior Samples",
+    y = "Fish-to-Non Fish Ratios"
+  ) +
+  theme(legend.position = "none")
 
 ```
 
