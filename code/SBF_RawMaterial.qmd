@@ -964,8 +964,9 @@ fit_mass_all_phase |>
   ylab("Posterior Median Artifact Mass") + xlab("Coastal-to-Terrestrial\nFoods") -> Mass_plot2
 
 # Pairwise comparison
-pairs(emmeans(fit_mass_all_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
-
+pws_tmp <- pairs(emmeans(fit_mass_all_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
+df_tmp <- summary(pws_tmp, infer = TRUE)
+write.csv(file = "Surplus_pairwise.csv", x = as.data.frame(df_tmp))
 # Test hypothesis that slopes greater than 0
 posterior <- as_draws(fit_mass_all_ind)$`1` # get posterior draws
 
