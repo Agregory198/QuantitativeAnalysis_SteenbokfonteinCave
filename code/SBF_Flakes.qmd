@@ -217,7 +217,7 @@ core_bind <- full_join(core_size, df) |>
          Transport_small = Utility_small/((MAXTHICKNESS/TECHLENGTH)*TECHLENGTH^3),
          
          Reduction = TECHLENGTH/Ave_FlakeLength) |>
-  select(any_of(names(df_students))) -> df.flakes
+  select(any_of(names(df_students)), Utility_small, Reduction) -> df.flakes
 
 # Subset data by cores and core variables
 df.cores <- df |>
@@ -238,53 +238,6 @@ df.retouch <- df |>
 # Read tabulated data from previous publications (i.e. Jerardino & Yates)
 sbf_df <- read.csv(here::here("data", "SBF_ToolType.csv"))
 sbf_un <- read.csv(here::here("data", "SBF_ToolType_unmod.csv"))
-```
-
-## Toolkit composition
-
-```{r fig-Figure10}
-
-png(here::here("results/figures", "supp3.png"), width = 185, height = 120,
-    units = "mm", res = 300)
-# Data pulled from Jerardino, 2022
-sbf_df |>
-  group_by(STRAT_mod) |>
-  summarize(Tool_sum = sum(Count)) |>
-  mutate(Lithic_Dens = c(602.7, 850.9,
-                         ((819+1861)/((819/1863.6)+(1861/1094.7))),
-                         2904.3, 1545.6, 2788.5),
-         Dep_rate = abs(c(((2.45+2)/2)-((2.6+2.2)/2),
-                      ((2.6+2.2)/2)-((3+2.4)/2),
-                      ((3+2.4)/2)-((3.5+2.7)/2),
-                      ((3.5+2.7)/2)-((5+3)/2),
-                      ((5+3)/2)-(4.6),
-                      ((9.7+4.6)/2)-(9.7))),
-         STRAT_modn = c("Pre-Megamidden", "Transitional", "Transitional",
-                        rep("Megamidden", 3))) |>
-  left_join(
-    
-    sbf_un |>
-      group_by(STRAT_mod) |>
-      summarize(Deb_sum = sum(Count)) 
-    
-) |>
-  mutate(Tool_Perc = (Tool_sum/Deb_sum)*100,
-         Lithic_std = Lithic_Dens/Dep_rate) |>
-  
-  ggplot(aes(x = Lithic_std, y = Tool_Perc, color = STRAT_modn, 
-             label = STRAT_mod))+
-  geom_point(size = 3)+
-  geom_text(aes(fontface = 2), hjust = 0.3, vjust = -0.5, size = 5,
-            show.legend = F, color = "black")+
-  scale_fill_viridis_d()+
-  scale_color_viridis_d()+
-  xlab("Lithic Density/Deposition Rate")+ylab("Formal Tool Percent")+
-  theme_minimal()+
-  theme(text = element_text(size = 20),
-        legend.title = element_blank())+
-    ylim(0, 11)
-
-dev.off()
 ```
 
 ## Flake Descriptions
@@ -523,7 +476,13 @@ fit_cutting_phase |>
   ylab("Posterior Median Cutting Edge/\nMass") + xlab("Coastal-to-Terrestrial\nFoods") -> CE_plot2
 
 # Test pairwise comparisons
-pairs(emmeans(fit_cutting_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
+pws_tmp <- pairs(emmeans(fit_cutting_phase, ~ STRAT_mod | RAWMATERIAL), level = 0.90, adjust = "tukey")
+
+
+# Pairwise comparison
+pws_tmp <- pairs(pws_tmp)
+df_tmp <- summary(pws_tmp, infer = TRUE)
+write.csv(file = "Cutting_edge_pairwise.csv", x = as.data.frame(df_tmp))
 
 # Test hypothesis that slopes greater than 0
 posterior <- as_draws(fit_cuttingEdge)$`1` # get posterior draws
@@ -767,8 +726,14 @@ fit_Elong_phase |>
   xlab("Coastal-to-Terrestrial\nFoods") -> Elong_plot2
 
 # Pairwise comparisons
-pairs(emmeans(fit_Elong_phase, ~ STRAT_mod | RAWMATERIAL), 
+pws_tmp <- pairs(emmeans(fit_Elong_phase, ~ STRAT_mod | RAWMATERIAL), 
       level = 0.90, adjust = "tukey")
+
+
+# Pairwise comparison
+pws_tmp <- pairs(pws_tmp)
+df_tmp <- summary(pws_tmp, infer = TRUE)
+write.csv(file = "Elongation_pairwise.csv", x = as.data.frame(df_tmp))
 ```
 
 ```{r}
@@ -992,12 +957,12 @@ bayes_poly_raw <- brm(Utility_s ~ 1 + RAWMATERIAL + poly(Reduction_s, 2, raw = T
               data = Bayes_ut1,
               family = Gamma(link = "log"),
               iter = 4000,
-              chains = 1,
+              chains = 4,
               seed = 112233,
               control = list(adapt_delta = 0.95, max_treedepth = 15),
               prior=my_prior,
               save_pars = save_pars(all = TRUE),
-              cores = getOption("mc.cores", 14))
+              cores = parallel::detectCores())
 
 loo_raw <- loo(bayes_poly_raw, moment_match = TRUE)
 which(loo_raw$diagnostics$pareto_k>0.7)
@@ -1163,6 +1128,13 @@ plot(em_slopes_resp)+
   ylab("Ratio")
 dev.off()
 #pairs(em_slopes_resp)
+as.data.frame(pairs(em_slopes_resp)) |>
+  gt() |>
+  tab_header(title = html("Pairwise posterior estimates"))
+
+as.data.frame(em_slopes_resp) |>
+  gt() |>
+  tab_header(title = html("Posterior estimates"))
 
 
 # Expected Utility for each strat at specified reduction value

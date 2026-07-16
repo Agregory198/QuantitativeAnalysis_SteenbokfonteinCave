@@ -764,6 +764,13 @@ plot(em_slopes_resp)+
 
 dev.off()
 #pairs(em_slopes_resp)
+as.data.frame(pairs(em_slopes_resp)) |>
+  gt() |>
+  tab_header(title = html("Pairwise posterior estimates"))
+
+as.data.frame(em_slopes_resp) |>
+  gt() |>
+  tab_header(title = html("Posterior estimates"))
 
 # Expected Utility for each strat at specified reduction value
 em_slopes_resp <- emmeans(

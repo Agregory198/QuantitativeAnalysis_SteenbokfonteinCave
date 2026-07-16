@@ -563,15 +563,15 @@ dev.off()
 ```{r coreVolumeRemoved}
 # Compute columetric reconstructions
 df.flakes |>
-  select(RAWMATERIAL, STRAT_mod, STRAT_modn, PLATFORMTHICKNESS, MAXTHICKNESS) |>
-  group_by(RAWMATERIAL, STRAT_mod, STRAT_modn) |>
+  select(RAWMATERIAL, STRAT_mod, PLATFORMTHICKNESS, MAXTHICKNESS) |>
+  group_by(RAWMATERIAL, STRAT_mod) |>
   na.omit() |>
   summarize(m_plat = mean(PLATFORMTHICKNESS),
             m_thick = mean(MAXTHICKNESS)) |>
   arrange(STRAT_mod, RAWMATERIAL) -> flake.vr
 
 flake.vr |>
-  left_join(df_cores) |>
+  left_join(df.cores) |>
   select(m_plat, m_thick,
          STRAT_mod, STRAT_modn,
          RAWMATERIAL, MAXLENGTH, MAXWIDTH, MAXTHICKNESS,
@@ -586,7 +586,7 @@ flake.vr |>
          volume_removed = (V/VR)*100,
          
          SDI = SCARCOUNT/SA_Ellipse) |>
-  select(STRAT_mod, STRAT_modn,
+  select(STRAT_mod,
          RAWMATERIAL, V, VR, volume_removed, SDI, SA_Ellipse)-> cores.vr
 ```
 
@@ -797,16 +797,6 @@ slope_summary <- slope_draws |>
     .groups = "drop"
   )
 
-
-ggarrange(
-  core_conard,
-  font.label = list(size = 25, face = "bold"),
-  widths = c(2, 1), heights = c(1.5, 1),
-  label.y = c(1, 1.2),
-  label.x = c(0.05, 0.05)
-  )
-
-
 ggplot(slope_summary, aes(Reduction_s, mean)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = lwr, ymax = upr),
@@ -927,7 +917,16 @@ plot(em_slopes_resp)+
   ylab("Ratio")
 
 dev.off()
-pairs(em_slopes_resp)
+#pairs(em_slopes_resp)
+
+
+as.data.frame(pairs(em_slopes_resp)) |>
+  gt() |>
+  tab_header(title = html("Pairwise posterior estimates"))
+
+as.data.frame(em_slopes_resp) |>
+  gt() |>
+  tab_header(title = html("Posterior estimates"))
 
 
 # Expected Utility for each strat at specified reduction value

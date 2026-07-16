@@ -1082,7 +1082,7 @@ hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1 > ",
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8 > ", 
                                       mean(df_mod$Median_mid50)))-> q_tmp7
 
-tibble(RawMaterial = rep("Quartz", 7*length(q_tmp1$samples$H1)),
+q_tmp_df <- tibble(RawMaterial = rep("Quartz", 7*length(q_tmp1$samples$H1)),
        Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
                  rep("25.5", length(q_tmp1$samples$H1)),
                  rep("26.6", length(q_tmp1$samples$H1)),
@@ -1092,9 +1092,11 @@ tibble(RawMaterial = rep("Quartz", 7*length(q_tmp1$samples$H1)),
                  rep("49.8", length(q_tmp1$samples$H1))),
        Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
                    q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
-  
-  mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
-    ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
+    mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8")))
+
+
+q_tmp_df |>
+  ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
   geom_density_ridges(alpha = 0.7, scale = 1) +
   geom_vline(xintercept = 0, lty = 2, color = "red")+
   theme_minimal() +
@@ -1104,6 +1106,28 @@ tibble(RawMaterial = rep("Quartz", 7*length(q_tmp1$samples$H1)),
     y = "Fish-to-Non Fish Ratios"
   ) +
   theme(legend.position = "none")
+
+q_tmp_df |>
+  group_by(Ratio) |>
+  summarize(median = median(Samples),
+            upr = quantile(Samples, 0.90),
+            lwr = quantile(Samples, 0.10)) |>
+  gt() |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"), 
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr > 0 & upr > 0
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f8d7da"),
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr < 0 & upr < 0
+    )
+  )|>
+  tab_header(title = html("Quartz posterior estimates"))
   
 
 hypothesis(fit_mass_all_phase, paste0("RAWMATERIALQuartzite > ",
@@ -1121,7 +1145,7 @@ hypothesis(fit_mass_all_phase, paste0("STRAT_mod37.1:RAWMATERIALQuartzite > ",
 hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALQuartzite > ", 
                                       mean(df_mod$Median_mid50)))-> q_tmp7
 
-tibble(RawMaterial = rep("Quartzite", 7*length(q_tmp1$samples$H1)),
+qt_tmp_df <- tibble(RawMaterial = rep("Quartzite", 7*length(q_tmp1$samples$H1)),
        Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
                  rep("25.5", length(q_tmp1$samples$H1)),
                  rep("26.6", length(q_tmp1$samples$H1)),
@@ -1130,7 +1154,9 @@ tibble(RawMaterial = rep("Quartzite", 7*length(q_tmp1$samples$H1)),
                  rep("37.1", length(q_tmp1$samples$H1)),
                  rep("49.8", length(q_tmp1$samples$H1))),
        Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
-                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
+                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) 
+
+qt_tmp_df |>
   mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
     ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
   geom_density_ridges(alpha = 0.7, scale = 1) +
@@ -1143,6 +1169,28 @@ tibble(RawMaterial = rep("Quartzite", 7*length(q_tmp1$samples$H1)),
   ) +
   theme(legend.position = "none")
 
+
+qt_tmp_df |>
+  group_by(Ratio) |>
+  summarize(median = median(Samples),
+            upr = quantile(Samples, 0.90),
+            lwr = quantile(Samples, 0.10)) |>
+  gt() |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"), 
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr > 0 & upr > 0
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f8d7da"),
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr < 0 & upr < 0
+    )
+  )|>
+  tab_header(title = html("Quartzite posterior estimates"))
 
 
 hypothesis(fit_mass_all_phase, paste0("RAWMATERIALSilcrete > ", 
@@ -1161,7 +1209,7 @@ hypothesis(fit_mass_all_phase, paste0("STRAT_mod49.8:RAWMATERIALSilcrete > ",
                                       mean(df_mod$Median_mid50)))-> q_tmp1
 
 
-tibble(RawMaterial = rep("Silcrete", 7*length(q_tmp1$samples$H1)),
+sil_tmp_df <- tibble(RawMaterial = rep("Silcrete", 7*length(q_tmp1$samples$H1)),
        Ratio = c(rep("8.4", length(q_tmp1$samples$H1)),
                  rep("25.5", length(q_tmp1$samples$H1)),
                  rep("26.6", length(q_tmp1$samples$H1)),
@@ -1170,7 +1218,8 @@ tibble(RawMaterial = rep("Silcrete", 7*length(q_tmp1$samples$H1)),
                  rep("37.1", length(q_tmp1$samples$H1)),
                  rep("49.8", length(q_tmp1$samples$H1))),
        Samples = c(q_tmp1$samples$H1,q_tmp2$samples$H1,q_tmp3$samples$H1,q_tmp4$samples$H1,
-                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) |>
+                   q_tmp5$samples$H1,q_tmp6$samples$H1,q_tmp7$samples$H1)) 
+sil_tmp_df |>
   mutate(Ratio = fct_relevel(Ratio, c("8.4", "25.5", "26.6", "27.2", "29.6", "37.1", "49.8"))) |>
     ggplot(aes(x = Samples, y = Ratio, fill = Ratio)) +
   geom_density_ridges(alpha = 0.7, scale = 1) +
@@ -1182,6 +1231,29 @@ tibble(RawMaterial = rep("Silcrete", 7*length(q_tmp1$samples$H1)),
     y = "Fish-to-Non Fish Ratios"
   ) +
   theme(legend.position = "none")
+
+
+sil_tmp_df |>
+  group_by(Ratio) |>
+  summarize(median = median(Samples),
+            upr = quantile(Samples, 0.90),
+            lwr = quantile(Samples, 0.10)) |>
+  gt() |>
+  tab_style(
+    style = cell_fill(color = "#d4edda"), 
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr > 0 & upr > 0
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f8d7da"),
+    locations = cells_body(
+      columns = everything(),
+      rows = lwr < 0 & upr < 0
+    )
+  )|>
+  tab_header(title = html("Silcrete posterior estimates"))
 
 ```
 
