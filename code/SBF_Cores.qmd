@@ -284,7 +284,7 @@ dev.off()
 ###### Core Type Bayesian Test
 
 ```{r}
-fit_df <- df_cores |>
+fit_df <- df.cores |>
   mutate(STRAT_mod = as.factor(STRAT_mod))
 
 
@@ -327,6 +327,7 @@ props <- bayes_cat |>
   rename("CONARDUNIFIEDTYPOLOGY" = .category)
 
 
+write.csv(file = "conard_Cores.csv", x = as.data.frame(props))
 ```
 
 ```{r}
@@ -387,9 +388,13 @@ pp |>
 #### Discrete
 
 ```{r}
-fit_df <- df_cores |>
+fit_df <- df.cores |>
   mutate(CE = SCARCOUNT/SA_Ellipse,
-         STRAT_mod_s = as.numeric(scale(STRAT_mod, center=T, scale = T)))
+         STRAT_mod_s = as.numeric(scale(STRAT_mod, center=T, scale = T)),
+         
+         STRAT_mod = factor(STRAT_mod),
+         RAWMATERIAL = droplevels(RAWMATERIAL)
+         )
 
 CE_prior <- 
   prior(normal(0, 0.5), class = "Intercept")+
@@ -484,10 +489,39 @@ post
 
 ```{r}
 
+my_prior <- 
+  prior(normal(-0.5, 1), class = "Intercept")+
+  
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod25.5")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod26.6")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod27.2")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod29.6")+
+  prior(normal(1, 0.5), class = "b", coef = "STRAT_mod37.1")+
+  prior(normal(1, 0.5), class = "b", coef = "STRAT_mod49.8")+
+  
+  prior(normal(1, 0.5), class = "b", coef = "RAWMATERIALQuartzite")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod25.5:RAWMATERIALQuartzite")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod26.6:RAWMATERIALQuartzite")+
+  prior(normal(0.5, 0.5), class = "b", coef = "STRAT_mod27.2:RAWMATERIALQuartzite")+
+  prior(normal(0.5, 1), class = "b", coef = "STRAT_mod29.6:RAWMATERIALQuartzite")+
+  prior(normal(0.5, 1), class = "b", coef = "STRAT_mod37.1:RAWMATERIALQuartzite")+
+  prior(normal(0.5, 1), class = "b", coef = "STRAT_mod49.8:RAWMATERIALQuartzite")+
+  
+  prior(normal(0, 1), class = "b", coef = "RAWMATERIALSilcrete")+
+  prior(normal(0, 1), class = "b", coef = "STRAT_mod25.5:RAWMATERIALSilcrete")+
+  prior(normal(0, 1), class = "b", coef = "STRAT_mod26.6:RAWMATERIALSilcrete")+
+  prior(normal(0, 1), class = "b", coef = "STRAT_mod27.2:RAWMATERIALSilcrete")+
+  prior(normal(0, 1), class = "b", coef = "STRAT_mod29.6:RAWMATERIALSilcrete")+
+  prior(normal(1, 1), class = "b", coef = "STRAT_mod37.1:RAWMATERIALSilcrete")+
+  prior(normal(1, 1), class = "b", coef = "STRAT_mod49.8:RAWMATERIALSilcrete")+
+  
+  prior(gamma(2, 0.5), class = "shape")
+
+
 fit_CE_anova <- brm(CE ~ STRAT_mod*RAWMATERIAL,
                data = fit_df,
   family = Gamma(link = "log"),
-  #prior = CE_prior,
+  prior = my_prior,
   cores = getOption("mc.cores", parallel::detectCores()),
   chains = 4,
   iter = 4000,
@@ -539,6 +573,16 @@ fit_CE_anova |>
           legend.position = "none") +
   ylab("Posterior Median Scar Density Index") + 
   xlab("Coastal-to-Terrestrial\nFoods") -> plot_CE2
+
+
+# Pairwise comparisons
+pws_tmp <- pairs(emmeans(fit_CE_anova, ~ STRAT_mod*RAWMATERIAL), 
+      level = 0.90, adjust = "tukey")
+
+
+# Pairwise comparison
+df_tmp <- summary(pws_tmp, infer = TRUE)
+write.csv(file = "SDI_pairwise.csv", x = as.data.frame(df_tmp))
 ```
 
 ```{r}
