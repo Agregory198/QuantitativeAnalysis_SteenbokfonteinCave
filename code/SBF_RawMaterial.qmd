@@ -6,6 +6,8 @@ editor: visual
 
 ```{r}
 # Run this to restore the environment
+# If we run into errors in package installation on Windows, ensure that the firewall is not blocking this process
+
 #install.packages("renv")
 #renv::restore()
 library(ggplot2)
@@ -190,7 +192,12 @@ df <- rbind(df_sum24, df_sum25) |>
                             "Megamidden")),
          STRAT_modn = fct_relevel(STRAT_modn, 
                                   c("Pre-Megamidden", "Transitional",
-                                    "Megamidden"))) |>
+                                    "Megamidden")),
+         
+         STRAT_label = factor(paste0(STRAT_mod, ' (', STRAT, ')'),
+                              levels = c('8.4 (5)', '25.5 (4b)', '26.6 (4a)',
+                                         '27.2 (1)', '29.6 (3b)', '37.1 (2)',
+                                         '49.8 (3a)'))) |>
   
   filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete"),
          CORTEX != "\\",
@@ -280,11 +287,11 @@ tab1
 # coastal diets
 df |>
   filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  group_by(STRAT_mod, RAWMATERIAL) |>
+  group_by(STRAT_mod, STRAT_label, RAWMATERIAL) |>
   summarize(Freq = n()) |>
   mutate(cs = sum(Freq),
          prop = Freq/cs) |>
-  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = prop, fill = RAWMATERIAL))+
+  ggplot(aes(x = STRAT_label, y = prop, fill = RAWMATERIAL))+
   geom_col()+
   labs(fill = "",
        x = "Coastal-to-Terrestrial\nFoods",
@@ -435,11 +442,11 @@ tmp_df %>%
 
 df |>
   filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  group_by(STRAT_mod, RAWMATERIAL, ARTIFACTCLASS) |>
+  group_by(STRAT_mod, STRAT_label, RAWMATERIAL, ARTIFACTCLASS) |>
   summarize(Freq = n()) |>
   mutate(cs = sum(Freq),
          prop = Freq/cs) |>
-  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = prop, fill = ARTIFACTCLASS))+
+  ggplot(aes(x = STRAT_label, y = prop, fill = ARTIFACTCLASS))+
   geom_col()+
   facet_wrap(~RAWMATERIAL)+
   labs(fill = "",
@@ -709,7 +716,7 @@ tmp_df %>%
 # calculate the cortical to noncortical ratio based on percent of cortex and artifact surface area
 ################## Bootstrap for modified Strats #####################
 iter = 100
-df_cortex_boot <- tibble(STRAT_mod = character(),
+df_cortex_boot <- tibble(STRAT_label = character(),
                          ratio = numeric(),
                          RAWMATERIAL = character(),
                          sample = numeric())
@@ -730,14 +737,11 @@ df |>
                     ifelse(CORTEX == "91-99%", 0.95,1)))))),
          
          C_SA = SA*cortical) |>
-  mutate(NC_SA = ifelse(CORTEX == "0%", SA, 0),
-         STRAT_mod = factor(STRAT_mod,
-                            levels = c("8.4", "25.5", "26.6",
-                                       "27.2", "29.6", "37.1", "49.8"))) |>
-  select(STRAT_mod, RAWMATERIAL, SA, C_SA, NC_SA, cortical) |>
+  mutate(NC_SA = ifelse(CORTEX == "0%", SA, 0)) |>
+  select(STRAT_label, RAWMATERIAL, SA, C_SA, NC_SA, cortical) |>
   slice_sample(n = nrow(df), replace = T) |>
   filter(SA < 2000) |>
-  group_by(STRAT_mod, RAWMATERIAL) |>
+  group_by(STRAT_label, RAWMATERIAL) |>
   summarize(cortical_sum = sum(C_SA),
             noncortical_sum = sum(NC_SA),
             ratio = cortical_sum/noncortical_sum,
@@ -765,7 +769,7 @@ df_emp_cortex <- df |>
          C_SA = SA*cortical) |>
   mutate(NC_SA = ifelse(CORTEX == "0%", SA, 0)) |>
   filter(SA < 2000) |>
-  group_by(STRAT_mod, RAWMATERIAL) |>
+  group_by(STRAT_label, RAWMATERIAL) |>
   summarize(cortical_sum = sum(C_SA),
             noncortical_sum = sum(NC_SA),
             ratio = cortical_sum/noncortical_sum)
@@ -774,13 +778,15 @@ df_emp_cortex <- df |>
 # Plot cortical to noncortical ratios with error bars from bootstrap data
 df_cortex_boot |>
   filter(RAWMATERIAL != "Silcrete") |>
-  group_by(RAWMATERIAL, STRAT_mod) |>
+  group_by(RAWMATERIAL, STRAT_label) |>
   summarise(lower_CI = quantile(ratio, 0.025, na.rm = T),
             upper_CI = quantile(ratio, probs = 0.975, na.rm = T),
-            median = quantile(ratio, probs = 0.5, na.rm = T))|>
-  mutate(STRAT_mod = fct_relevel(STRAT_mod, c("8.4", "25.5", "26.6",
-                                       "27.2", "29.6", "37.1", "49.8"))) |>
-  ggplot(aes(x = factor(STRAT_mod, ordered = T), y = median, fill = RAWMATERIAL))+
+            median = quantile(ratio, probs = 0.5, na.rm = T)) |>
+  mutate(STRAT_label = factor(STRAT_label,
+                              levels = c('8.4 (5)', '25.5 (4b)', '26.6 (4a)',
+                                         '27.2 (1)', '29.6 (3b)', '37.1 (2)',
+                                         '49.8 (3a)'))) |>
+  ggplot(aes(x = STRAT_label, y = median, fill = RAWMATERIAL))+
   geom_bar(stat = "identity", position = "dodge")+
   geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI, colour = "grey"),
                 position = "dodge")+
@@ -822,7 +828,7 @@ fit_df <- df |>
       mutate(log_MASS = log(MASS),
              STRAT_mod_s = as.numeric(scale(STRAT_mod, center = T, scale = T)),
          STRAT_mod = factor(STRAT_mod)) |>
-  select(RAWMATERIAL, STRAT_mod, STRAT_mod_s, MASS)
+  select(RAWMATERIAL, STRAT_mod, STRAT_mod_s, STRAT_label, MASS)
 
 # Gamma prior for individual layers and Mass
 Gamma_Prior_Mass_Ind <- 
@@ -939,14 +945,21 @@ median <- fit_df |>
   summarize(median = quantile(MASS, prob = 0.5),
             upr = quantile(MASS, prob = 0.75))
   
+
+new_data2 <- expand.grid(
+  STRAT_mod_s = seq(min(fit_df$STRAT_mod_s),
+                    max(fit_df$STRAT_mod_s), length.out = 100),
+  STRAT_label = unique(fit_df$STRAT_label),
+  RAWMATERIAL = unique(fit_df$RAWMATERIAL)
+)
   
   
 fit_mass_all_phase |>
   epred_draws(
-    newdata = distinct(fit_df, STRAT_mod, RAWMATERIAL)
+    newdata = distinct(fit_df, STRAT_mod, STRAT_label, RAWMATERIAL)
     ) |>
   ggplot() +
-  stat_halfeye(aes(x = STRAT_mod, y = .epred),
+  stat_halfeye(aes(x = STRAT_label, y = .epred),
                .width = c(.90, .5), scale = 0, linewidth = 1, point_size = 0.7,
                adjust = 0.8, width = 0.6,
                orientation = "vertical", point_interval = "median_qi")+
