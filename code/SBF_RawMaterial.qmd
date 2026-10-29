@@ -1007,7 +1007,7 @@ dev.off()
 ```{r}
 
 df |>
-  select(MASS, STRAT, RAWMATERIAL, STRAT_modn) |>
+  select(MASS, STRAT, RAWMATERIAL, STRAT_modn, STRAT_label) |>
   group_by(STRAT_modn) |>
   mutate(Quant_lower75 = quantile(log(MASS), probs = 0.75, na.rm = T),
          Median_mid50 = quantile(log(MASS), probs = 0.5, na.rm = T),
@@ -1024,7 +1024,7 @@ hline_ter <- df_mod |> filter(STRAT_modn == "Pre-Megamidden") |>
 
 
 df |>
-  select(MASS, STRAT, RAWMATERIAL, STRAT_mod) |>
+  select(MASS, STRAT, RAWMATERIAL, STRAT_mod, STRAT_label) |>
   group_by(STRAT_mod) |>
   mutate(Quant_lower75 = quantile(log(MASS), probs = 0.75, na.rm = T),
          Median_mid50 = quantile(log(MASS), probs = 0.5, na.rm = T),
@@ -1049,9 +1049,9 @@ hline_7 <- df_mod |> filter(STRAT_mod == "8.4") |>
 
 fit_df |>
   mutate(RAWMATERIAL = as.factor(RAWMATERIAL)) |>
-  ggplot(aes(x = factor(STRAT_mod, ordered = TRUE), y = log(MASS),
+  ggplot(aes(x = STRAT_label, y = log(MASS),
              fill = RAWMATERIAL, 
-                   group = interaction(RAWMATERIAL, STRAT_mod)))+
+                   group = interaction(RAWMATERIAL, STRAT_label)))+
   geom_boxplot()+
 
   geom_point(aes(color = "white"),
