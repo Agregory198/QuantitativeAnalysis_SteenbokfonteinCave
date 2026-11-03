@@ -19,21 +19,23 @@ list_of_dfs <- map(set_names(sheet_names),
 
 ```{r}
 
-
 lithics <- as_tibble(list_of_dfs$Artifacts) |>
   mutate(Pottery = PotteryI + PotteryII) |>
-   select(-c(PotteryI, PotteryII))
+  select(-c(PotteryI, PotteryII)) |>
+  rename(`Post-Wilton` = PostWilton)
 
 shells <- as_tibble(list_of_dfs$Shell) |>
-  rename(PostWilton = PotWilton)
+  rename(`Post-Wilton` = PotWilton)
 
 bones <- read_csv("../data/bone_artifacts.csv") |>
-  rename(PostWilton = `Post-Wilton`,
-         ELSA = Elsa,
+  rename(ELSA = Elsa,
          Artifact = Category) |>
   select(-Total)
 
 df_merge <- bind_rows(lithics, shells, bones)
+```
+
+```{r}
 
 artifacts <- df_merge |>
   mutate(Artifact = ifelse(Artifact %in% 
@@ -98,37 +100,30 @@ artifacts <- df_merge |>
                                              'cut bone frags'),
                              "drop",
                              Artifact))))))))))) |>
-  pivot_longer(PostWilton:Pottery, values_to = "counts",
+  pivot_longer(`Post-Wilton`:Pottery, values_to = "counts",
                names_to = "layer") |>
   
   group_by(Artifact, layer) |>
-  summarize(total = sum(counts))
+  summarize(total = sum(counts)) |>
 
-artifacts <- artifacts |>
   mutate(Artifact = ifelse(Artifact == "incomplete OES beads",
                            "unfinished OES beads",
                     ifelse(Artifact == "whole OES beads",
                            "finished OES beads",
                            Artifact)),
          
-         total = ifelse(layer == "ELSA", 
-                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
-                                                   artifacts$layer=="ELSA")],
-                 ifelse(layer == "Oakhurst", 
-                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
-                                                   artifacts$layer=="Oakhurst")],
-                 ifelse(layer == "Wilton", 
-                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
-                                                   artifacts$layer=="Wilton")],
-                 ifelse(layer == "Pottery", 
-                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
-                                                   artifacts$layer=="Pottery")],
-                        total/artifacts$total[which(artifacts$Artifact=="buckets" &
-                                                   artifacts$layer=="PostWilton")]))))) |>
-  mutate(layer = fct_relevel(layer,
-                             c("Pottery", "PostWilton",
-                               "Wilton", "Oakhurst",
-                               "ELSA")),
+         Bucket_n = as.numeric(ifelse(layer == 'ELSA', 56.5,
+                    ifelse(layer == 'Oakhurst', 111,
+                    ifelse(layer == 'Wilton', 190,
+                    ifelse(layer == 'Post-Wilton', 54.5,
+                    ifelse(layer == 'Pottery', 380,
+                           layer))))))) |>
+  
+  group_by(layer) |>
+  mutate(total_dens = total/Bucket_n) |>
+  mutate(layer = factor(layer,
+                        levels = c("ELSA", "Oakhurst", "Wilton", "Post-Wilton",
+                                   "Pottery")),
          c = rep("Jubilee", n()))
   
  
@@ -213,7 +208,7 @@ sbf_df <- sbf_df |>
                            "finished OES beads",
                            Artifact)),
          
-         total = ifelse(layer == "1", 
+         total_dens = ifelse(layer == "1", 
                         total/sbf_df$total[which(sbf_df$Artifact=="bucket" &
                                                    sbf_df$layer==1)],
                  ifelse(layer == "2", 
@@ -239,74 +234,207 @@ sbf_df <- sbf_df |>
 ### Curated Tool Density
 
 ```{r}
-artifacts |>
+jub_back <- artifacts |>
   bind_rows(sbf_df) |>
-  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
-                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
-                        layer))) |>
-  filter(Artifact %in% c("backed", "points", "segment", "adze") &
-           !layer %in% c("Pottery", "ELSA")) |>
-    group_by(layer, c) |>
-  summarize(s = sum(total)) |>
-  ungroup() |>
-  ggplot(aes(x = factor(layer), y = s, group = c, fill = c))+
-  geom_bar(stat = "identity", 
-           position = position_dodge2(width = 0.9, preserve = "single")) +
-  scale_fill_viridis_d() +
+  filter(
+    Artifact %in% c("backed", "points", "segment", "adze"),
+    !layer %in% c("Pottery", "ELSA")
+  ) |>
+  mutate(
+    layer = case_when(
+      layer %in% c("4b", "5") ~ "Wilton",
+      layer %in% c("1", "2", "3", "4a") ~ "Post-Wilton",
+      TRUE ~ layer
+    ),
+    layer = factor(
+      layer,
+      levels = c("Oakhurst", "Wilton", "Post-Wilton")
+    )
+  ) |>
+  group_by(layer, c) |>
+  summarize(
+    s = sum(total, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  pivot_wider(
+    names_from = c,
+    values_from = s,
+    values_fill = 0
+  ) |>
+  pivot_longer(
+    cols = c(Jubilee, sbf),
+    names_to = "Site",
+    values_to = "Frequency"
+  ) |>
+  mutate(
+    Frequency_scaled = ifelse(
+      Site == "sbf",
+      Frequency * 100,
+      Frequency
+    )
+  ) |>
+  ggplot(aes(x = layer, y = Frequency_scaled, fill = Site)) +
+  geom_col(
+    position = position_dodge(width = 0.9),
+    width = 0.8
+  ) +
+  scale_fill_viridis_d(
+    labels = c("Jubilee", "Steenbokfontein Cave")
+  ) +
+  scale_y_continuous(
+    name = "Jubilee",
+    sec.axis = sec_axis(
+      ~ . / 100,
+      name = "SBF"
+    )
+  ) +
   theme_minimal() +
-  theme(legend.title = element_blank())+
-  ylab("Density") + xlab("") -> jub_back
+  theme(
+    legend.title = element_blank()
+  ) +
+  labs(x = NULL, y = NULL)
 ```
 
 ### OES
 
 ```{r}
-artifacts |>
+jub_oes <- artifacts |>
   bind_rows(sbf_df) |>
-  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
-                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
-                        layer))) |>
-  filter(Artifact %in% c("unfinished OES beads", "finished OES beads")&
-           !layer %in% c("Pottery", "ELSA")) |>
+  filter(
+    Artifact %in% c("unfinished OES beads", "finished OES beads"),
+    !layer %in% c("Pottery", "ELSA")
+  ) |>
+  mutate(
+    layer = case_when(
+      layer %in% c("4b", "5") ~ "Wilton",
+      layer %in% c("1", "2", "3", "4a") ~ "Post-Wilton",
+      TRUE ~ layer
+    ),
+    layer = factor(
+      layer,
+      levels = c("Oakhurst", "Wilton", "Post-Wilton")
+    )
+  ) |>
   group_by(layer, c, Artifact) |>
-  summarize(s = sum(total)) |>
-  ungroup() |>
-  pivot_wider(names_from = Artifact, values_from = s) |>
-  mutate(ratio = `finished OES beads`/`unfinished OES beads`) |>
-
-  ggplot(aes(x = factor(layer), y = ratio, fill = c))+
-  geom_bar(stat = "identity", 
-           position = position_dodge2(width = 0.9, preserve = "single")) +
-  scale_fill_viridis_d() +
+  summarize(
+    s = sum(total, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  pivot_wider(
+    names_from = Artifact,
+    values_from = s,
+    values_fill = 0
+  ) |>
+  mutate(
+    ratio = ifelse(
+      `unfinished OES beads` > 0,
+      `finished OES beads` / `unfinished OES beads`,
+      NA_real_
+    )
+  ) |>
+  select(layer, c, ratio) |>
+  pivot_wider(
+    names_from = c,
+    values_from = ratio
+  ) |>
+  pivot_longer(
+    cols = c(Jubilee, sbf),
+    names_to = "Site",
+    values_to = "Ratio"
+  ) |>
+  mutate(
+    Ratio_scaled = ifelse(
+      Site == "sbf",
+      Ratio * 10,
+      Ratio
+    )
+  ) |>
+  ggplot(aes(x = layer, y = Ratio_scaled, fill = Site)) +
+  geom_col(
+    position = position_dodge(width = 0.9),
+    width = 0.8
+  ) +
+  scale_fill_viridis_d(
+    labels = c("Jubilee", "Steenbokfontein Cave")
+  ) +
+  scale_y_continuous(
+    name = "Jubilee",
+    sec.axis = sec_axis(
+      ~ . / 10,
+      name = "SBF"
+    )
+  ) +
   theme_minimal() +
-  theme(legend.title = element_blank())+
-  ylab("") + xlab("") ->jub_oes
+  theme(
+    legend.title = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
 ```
 
 ### Bone Tools
 
 ```{r}
-artifacts |>
+jub_bone <- artifacts |>
   bind_rows(sbf_df) |>
-  mutate(layer = ifelse(layer %in% c('4b', '5'), "Wilton", 
-                 ifelse(layer %in% c("1", "2", "3", "4a"), "PostWilton",
-                        layer))) |>
-  filter(Artifact == "symbolic"&
-           !layer %in% c("Pottery", "ELSA")) |>
+  filter(
+    Artifact == "symbolic",
+    !layer %in% c("Pottery", "ELSA")
+  ) |>
+  mutate(
+    layer = case_when(
+      layer %in% c("4b", "5") ~ "Wilton",
+      layer %in% c("1", "2", "3", "4a") ~ "Post-Wilton",
+      TRUE ~ layer
+    ),
+    layer = factor(
+      layer,
+      levels = c("Oakhurst", "Wilton", "Post-Wilton")
+    )
+  ) |>
   group_by(layer, c) |>
-  summarize(s = sum(total)) |>
-  ungroup() |>
-  ggplot(aes(x = factor(layer), y = s, fill = c))+
-  geom_bar(stat = "identity", 
-           position = position_dodge2(width = 0.9, preserve = "single")) +
-  scale_fill_viridis_d() +
+  summarize(
+    s = sum(total, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(
+    Ratio_scaled = ifelse(
+      c == "sbf",
+      s * 100,
+      s
+    )
+  ) |>
+    
+  ggplot(aes(x = layer, y = Ratio_scaled, fill = c)) +
+  geom_col(
+    position = position_dodge(width = 0.9, preserve = "single"),
+    width = 0.8
+  ) +
+  scale_fill_viridis_d(
+    labels = c("Jubilee", "Steenbokfontein Cave")
+  ) +
+  scale_y_continuous(
+    name = "Jubilee",
+    sec.axis = sec_axis(
+      ~ . / 100,
+      name = "SBF"
+    )
+  ) +
   theme_minimal() +
-  theme(legend.title = element_blank())+
-  ylab("") + xlab("") -> jub_bone
+  theme(
+    legend.title = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = "Symbolic artifacts"
+  )
 ```
 
 ```{r}
-png(here::here("results/figures", "Figure15.png"), width = 220, height = 120,
+png(here::here("results/figures", "Figure18.png"), width = 220, height = 120,
     units = "mm", res = 300)
 
   ggarrange(jub_oes, jub_back, jub_bone,
@@ -326,7 +454,10 @@ dev.off()
 ```{r}
 sbf_df |>
   filter(Artifact %in% c("backed", "points", "segment", "adze")) |>
-  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         layer = factor(layer,
+                        levels = c('5', '4b', '4a',
+                                   '3', '2', '1'))) |>
   ggplot(aes(x = factor(layer), y = total, fill = site))+
   geom_bar(stat = "identity") +
   scale_fill_viridis_d() +
@@ -340,9 +471,14 @@ sbf_df |>
 ```{r}
 sbf_df |>
   filter(Artifact %in% c("unfinished OES beads", "finished OES beads")) |>
-  pivot_wider(names_from = Artifact, values_from = total) |>
+  select(-total) |>
+  ungroup() |>
+  pivot_wider(names_from = Artifact, values_from = total_dens) |>
   mutate(ratio = `finished OES beads`/`unfinished OES beads`) |>
-  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         layer = factor(layer,
+                        levels = c('5', '4b', '4a',
+                                   '3', '2', '1'))) |>
   ggplot(aes(x = factor(layer), y = ratio, fill = site))+
   geom_bar(stat = "identity") +
   scale_fill_viridis_d() +
@@ -356,7 +492,10 @@ sbf_df |>
 ```{r}
 sbf_df |>
   filter(Artifact == "symbolic") |>
-  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3))) |>
+  mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         layer = factor(layer,
+                        levels = c('5', '4b', '4a',
+                                   '3', '2', '1'))) |>
   ggplot(aes(x = factor(layer), y = total, fill = site))+
   geom_bar(stat = "identity") +
   scale_fill_viridis_d() +
@@ -366,7 +505,7 @@ sbf_df |>
 ```
 
 ```{r}
-png(here::here("results/figures", "Figure16.png"), width = 220, height = 120,
+png(here::here("results/figures", "Figure19.png"), width = 220, height = 120,
     units = "mm", res = 300)
 
   ggarrange(sbf_oes, sbf_back, sbf_bone,
