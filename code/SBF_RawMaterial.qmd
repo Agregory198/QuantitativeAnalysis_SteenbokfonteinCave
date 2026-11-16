@@ -33,6 +33,7 @@ library(gt)
 library(broom)
 library(broom.mixed)
 library(flextable)
+library(officer)
 
 library(stargazer)
 library(kableExtra)
@@ -252,33 +253,230 @@ sbf_un <- read.csv(here::here("data", "SBF_ToolType_unmod.csv"))
 
 ## Raw material distribution
 
-```{r tab1}
+```{r}
+df_table1 <- df %>%
+  select(STRAT, ARTIFACTCLASS, RETOUCHEDPIECETYPOLOGY, CONARDUNIFIEDTYPE,
+         RAWMATERIAL) %>%
+  rename(Category = RETOUCHEDPIECETYPOLOGY,
+         Layer = STRAT) %>%
+  mutate(
+    Category = ifelse(ARTIFACTCLASS == 'Core' & 
+                        (Category == "" | is.na(Category)), CONARDUNIFIEDTYPE,
+                      Category),
+    Category = ifelse(ARTIFACTCLASS == 'Flake' &
+                        (Category != 'MinimallyRetouched' | is.na(Category)),
+                      'Unretouched',
+               ifelse(Category == 'MinimallyRetouched', 'Retouched', Category)),
+    
+    Category = ifelse(Category == 'BackedPiece', 'Backed',
+               ifelse(Category == 'EndScraper', 'End scraper',
+               ifelse(Category == 'Side-EndScraper', 'Side-End scraper',
+               ifelse(Category == 'SideScraper', 'Side scraper',
+                      Category)))),
+    
+    RAWMATERIAL = droplevels(RAWMATERIAL),
+  ) %>%
+  select(-CONARDUNIFIEDTYPE) %>%
+  group_by(RAWMATERIAL, Layer, Category) %>%
+  summarize(n = n(), .groups = 'drop')
 
 
-# Create summary table
+layer_order <- c("1", "2", "3a", "3b", "4a", "4b", "5")
+category_order <- c(
+  "Unretouched",
+  "Retouched",
+  "Bipolar",
+  "Inclined",
+  "Platform",
+  "Adze",
+  "Backed",
+  "End scraper",
+  "Side-End scraper",
+  "Side scraper"
+)
 
-df |>
-  mutate(across(where(is.factor), droplevels)) |>
-  select(STRAT, RAWMATERIAL, ARTIFACTCLASS) |>
-  mutate(ARTIFACTCLASS = ifelse(ARTIFACTCLASS ==
-                                  "RetouchedTool", "Retouched tools", 
-                                ARTIFACTCLASS),
-         RAWMATERIAL = 
-           fct_relevel(RAWMATERIAL,
-                       "Quartz", "Quartzite", "Silcrete")) |>
-  rename(Layer = STRAT,
-         `Artifact class` = ARTIFACTCLASS) |>
-  filter(RAWMATERIAL %in% c("Quartz", "Quartzite", "Silcrete")) |>
-  tbl_strata(
-    strata = RAWMATERIAL,
-    .tbl_fun =
-      ~ .x |>
-        tbl_summary(by = "Artifact class", missing = "no") |> add_n()
-  ) |>
-  modify_header(label = "") -> tab1
-tab1
+df_prop_table1 <- df_table1 %>%
+  mutate(
+    Layer = factor(Layer, levels = layer_order),
+    Category = factor(Category, levels = category_order)
+  ) %>%
+  group_by(RAWMATERIAL, Layer, Category) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  complete(
+    RAWMATERIAL,
+    Layer,
+    Category,
+    fill = list(n = 0)
+  ) %>%
+  group_by(RAWMATERIAL, Layer) %>%
+  mutate(
+    denominator = sum(n),
+    proportion = n / denominator * 100
+  ) %>%
+  ungroup()
 
-#gtsave(tab1, "Table1.png")
+
+
+# Individual layer rows
+layer_rows <- df_prop_table1 %>%
+  mutate(
+    cell = sprintf("%d\n(%.1f%%)", n, proportion)
+  ) %>%
+  select(RAWMATERIAL, Layer, Category, cell)
+
+# Total rows
+total_rows <- df_prop_table1 %>%
+  group_by(RAWMATERIAL, Category) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  group_by(RAWMATERIAL) %>%
+  mutate(
+    proportion = n / sum(n) * 100,
+    cell = sprintf("%d (%.1f%%)", n, proportion),
+    Layer = "Total"
+  ) %>%
+  ungroup() %>%
+  select(RAWMATERIAL, Layer, Category, cell)
+
+
+
+```
+
+```{r}
+table_data <- bind_rows(layer_rows, total_rows) %>%
+  mutate(
+    Layer = as.character(Layer),
+    Layer = factor(
+      Layer,
+      levels = c(layer_order, "Total")
+    )
+  ) %>%
+  pivot_wider(
+    names_from = Category,
+    values_from = cell
+  ) %>%
+  arrange(RAWMATERIAL, Layer) %>%
+  mutate(
+    Assemblage = as.character(RAWMATERIAL),
+    Layer = as.character(Layer)
+  )
+
+
+ft <- flextable(
+  table_data %>%
+    rename('Raw Material' = Assemblage) %>%
+    select('Raw Material', Layer, all_of(category_order))
+)
+
+# Grouped column headers
+ft <- add_header_row(
+  ft,
+  values = c(
+    "",
+    "",
+    "Flake",
+    "Core",
+    "Retouched Tools"
+  ),
+  colwidths = c(1, 1, 2, 3, 5)
+)
+
+# Merge raw material names vertically
+ft <- merge_v(
+  ft,
+  j = 'Raw Material'
+)
+
+ft <- valign(
+  ft,
+  j = 'Raw Material',
+  valign = "center",
+  part = "body"
+)
+
+# Formatting
+ft <- theme_booktabs(ft)
+
+ft <- font(
+  ft,
+  fontname = "Times New Roman",
+  part = "all"
+)
+
+ft <- fontsize(ft, size = 9, part = "all")
+
+ft <- align(ft, align = "center", part = "all")
+
+ft <- align(
+  ft,
+  j = 'Raw Material',
+  align = "left",
+  part = "body"
+)
+
+ft <- bold(ft, part = "header")
+
+# Alternating shading
+ft <- bg(
+  ft,
+  i = seq(2, nrow(table_data), by = 2),
+  bg = "#EEEEEE",
+  part = "body"
+)
+
+# Bold total rows
+total_idx <- which(table_data$Layer == "Total")
+
+ft <- bold(
+  ft,
+  i = total_idx,
+  bold = TRUE,
+  part = "body"
+)
+
+# Blue vertical separators
+blue_border <- fp_border(
+  color = "#C6D9FF",
+  width = 1.5
+)
+
+# Column borderw
+ft <- border(
+  ft,
+  j = c(4, 7),
+  border.right = blue_border,
+  part = "all"
+)
+
+# Row borders
+ft <- border(
+  ft,
+  i = total_idx,
+  border.top = blue_border,
+  border.bottom = blue_border,
+  part = "body"
+)
+
+# Autofit
+#ft <- autofit(ft)
+
+ft <- set_table_properties(
+  ft,
+  layout = "fixed",
+  width = 1
+)
+
+ft <- fit_to_width(
+  ft,
+  max_width = 10
+)
+
+#save_as_docx(
+#  ft,
+#  path = here::here('results',
+#                    'tables',
+#                    "Lithic_Assemblage_Table.docx"
+#  )
+#)
 ```
 
 ```{r}

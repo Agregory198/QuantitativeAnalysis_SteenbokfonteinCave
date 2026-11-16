@@ -194,7 +194,9 @@ sbf_df <- read_csv(here::here("data", "SBF_Artifacts.csv")) |>
                                              'miscellaneous',
                                              'cut bone frags'),
                              "drop",
-                             Artifact))))))))))) |>
+                             Artifact))))))))))
+         
+         ) |>
   pivot_longer(`1`:`5`, values_to = "counts",
                names_to = "layer") |>
   
@@ -237,7 +239,7 @@ sbf_df <- sbf_df |>
 jub_back <- artifacts |>
   bind_rows(sbf_df) |>
   filter(
-    Artifact %in% c("backed", "points", "segment", "adze"),
+    Artifact %in% c("backed", "points", "segment", "adze", "scraper"),
     !layer %in% c("Pottery", "ELSA")
   ) |>
   mutate(
@@ -269,7 +271,7 @@ jub_back <- artifacts |>
   mutate(
     Frequency_scaled = ifelse(
       Site == "sbf",
-      Frequency * 100,
+      Frequency * 10,
       Frequency
     )
   ) |>
@@ -284,7 +286,7 @@ jub_back <- artifacts |>
   scale_y_continuous(
     name = "Jubilee",
     sec.axis = sec_axis(
-      ~ . / 100,
+      ~ . / 10,
       name = "SBF"
     )
   ) +
@@ -403,7 +405,7 @@ jub_bone <- artifacts |>
   mutate(
     Ratio_scaled = ifelse(
       c == "sbf",
-      s * 100,
+      s * 10,
       s
     )
   ) |>
@@ -414,12 +416,12 @@ jub_bone <- artifacts |>
     width = 0.8
   ) +
   scale_fill_viridis_d(
-    labels = c("Jubilee", "Steenbokfontein Cave")
+    labels = c("Steenbokfontein Cave", "Jubilee")
   ) +
   scale_y_continuous(
     name = "Jubilee",
     sec.axis = sec_axis(
-      ~ . / 100,
+      ~ . / 10,
       name = "SBF"
     )
   ) +
@@ -453,8 +455,9 @@ dev.off()
 
 ```{r}
 sbf_df |>
-  filter(Artifact %in% c("backed", "points", "segment", "adze")) |>
+  filter(Artifact %in% c("backed", "points", "segment", "adze", "scraper")) |>
   mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         site = factor(site, levels = c('Dispersal', 'Aggregation')),
          layer = factor(layer,
                         levels = c('5', '4b', '4a',
                                    '3', '2', '1'))) |>
@@ -476,6 +479,7 @@ sbf_df |>
   pivot_wider(names_from = Artifact, values_from = total_dens) |>
   mutate(ratio = `finished OES beads`/`unfinished OES beads`) |>
   mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         site = factor(site, levels = c('Dispersal', 'Aggregation')),
          layer = factor(layer,
                         levels = c('5', '4b', '4a',
                                    '3', '2', '1'))) |>
@@ -493,6 +497,7 @@ sbf_df |>
 sbf_df |>
   filter(Artifact == "symbolic") |>
   mutate(site = c(rep("Aggregation", 3), rep("Dispersal", 3)),
+         site = factor(site, levels = c('Dispersal', 'Aggregation')),
          layer = factor(layer,
                         levels = c('5', '4b', '4a',
                                    '3', '2', '1'))) |>
