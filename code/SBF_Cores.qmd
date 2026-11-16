@@ -577,6 +577,7 @@ fit_CE_anova |>
           element_text(angle = 45, hjust = 1),
           text = element_text(size = 18),
           legend.position = "none") +
+  ylim(0, 0.05) +
   ylab("Posterior Median Scar Density Index") + 
   xlab("Coastal-to-Terrestrial\nFoods") -> plot_CE2
 
@@ -592,7 +593,7 @@ write.csv(file = "SDI_pairwise.csv", x = as.data.frame(df_tmp))
 ```
 
 ```{r}
-png(here::here("results/figures", "Figure10.png"), width = 290, height = 220,
+png(here::here("results/figures", "Figure13.png"), width = 290, height = 220,
     units = "mm", res = 300)
 
 
